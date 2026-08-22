@@ -1,0 +1,10 @@
+/* The app paints its own surface; this only removes the page-level defaults. */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #E7E5DC;
+}
+@media (prefers-color-scheme: dark) {
+  html, body, #root { background: #13161B; }
+}
