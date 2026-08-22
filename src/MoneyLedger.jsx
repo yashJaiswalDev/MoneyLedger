@@ -241,18 +241,32 @@ const CARD_INKS = ["#27408B", "#5C2E3E", "#2F4F4F", "#4A3B6B", "#7A3B22", "#1F3A
 const ACC_INKS = ["#1F6F5C", "#3E5C76", "#6B5B3E", "#4E6E58", "#5B4B6E", "#2F5D62"];
 const inkFor = (set, i) => set[i % set.length];
 
-/* ---------- storage (browser localStorage) ---------- */
+/* ---------- storage (window.storage in Claude, localStorage elsewhere) ---------- */
 const KEY = "money-ledger-v1";
 const store = {
   async load() {
     try {
+      if (typeof window !== "undefined" && window.storage && window.storage.get) {
+        const res = await window.storage.get(KEY, false);
+        if (res && res.value) return JSON.parse(res.value);
+      }
+    } catch (e) { /* key absent — fall through */ }
+    try {
       const raw = window.localStorage.getItem(KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* storage blocked */ }
+    return null;
   },
   async save(state) {
+    const payload = JSON.stringify(state);
     try {
-      window.localStorage.setItem(KEY, JSON.stringify(state));
+      if (typeof window !== "undefined" && window.storage && window.storage.set) {
+        await window.storage.set(KEY, payload, false);
+        return "cloud";
+      }
+    } catch (e) { /* fall through */ }
+    try {
+      window.localStorage.setItem(KEY, payload);
       return "local";
     } catch (e) { return "none"; }
   },
@@ -277,16 +291,15 @@ const MoonIcon = () => (
 const blank = () => ({
   config: {
     repoRate: 5.25,          // set in the Settings tab — the only source of the rate
-    spread: 0,               // your bank's spread over repo, also configurable
     monthlyIncome: 0,
     lastBackup: "",
     theme: "",
     categories: BASE_CATEGORIES.slice(),
   },
   accounts: [
-    { id: uid(), name: "Salary account", type: "Savings", earningInterest: true, rateMode: "repo", customRate: 0, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
-    { id: uid(), name: "Emergency fund", type: "Savings", earningInterest: true, rateMode: "repo", customRate: 0, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
-    { id: uid(), name: "Cash wallet", type: "Cash", earningInterest: false, rateMode: "repo", customRate: 0, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
+    { id: uid(), name: "Salary account", type: "Savings", earningInterest: true, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
+    { id: uid(), name: "Emergency fund", type: "Savings", earningInterest: true, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
+    { id: uid(), name: "Cash wallet", type: "Cash", earningInterest: false, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
   ],
   cards: [{ id: uid(), name: "Primary credit card", limit: 200000 }],
   spends: [],       // credit-card ledger
@@ -297,34 +310,38 @@ const blank = () => ({
   budgets: {},      // category -> monthly amount
 });
 
-/* An account either follows the configured repo rate or carries its own. */
-const rateFor = (a, config) =>
-  a && a.rateMode === "custom" ? num(a.customRate) : num(config.repoRate) + num(config.spread);
-
 /* ---------- engines ---------- */
 /* Daily interest. Rate is read from config only — never hardcoded here. */
+/* Daily interest, driven solely by the RBI repo rate held in config.
+   The rate is annual (% p.a.); each day earns rate/365, compounded daily.
+   One entry covers the whole gap since you were last here, so the total is the
+   same whether you open the app every day or once a year. */
 function runAccrual(d) {
   const today = TODAY();
+  const rate = num(d.config.repoRate);
+  const perDay = rate / 100 / 365;
   const posted = [];
+
   d.accounts.forEach((a) => {
     if (!a.lastAccrual) a.lastAccrual = today;
-    if (!a.earningInterest) { a.lastAccrual = today; return; }
-    const rate = rateFor(a, d.config);
-    const daily = rate / 100 / 365;
+    if (!a.earningInterest || !(perDay > 0)) { a.lastAccrual = today; return; }
+
     const days = daysBetween(a.lastAccrual, today);
-    if (!(days > 0) || !(a.balance > 0) || !(daily > 0)) { a.lastAccrual = today; return; }
-    const interest = r2(a.balance * (Math.pow(1 + daily, days) - 1));
+    if (!(days > 0) || !(a.balance > 0)) { a.lastAccrual = today; return; }
+
+    const interest = r2(a.balance * (Math.pow(1 + perDay, days) - 1));
     a.lastAccrual = today;
     if (!(interest > 0)) return;
+
     a.balance = r2(a.balance + interest);
     a.interestEarned = r2((a.interestEarned || 0) + interest);
-    const tx = {
+    d.savingsTx.push({
       id: uid(), date: today, accountId: a.id, type: "interest", amount: interest,
       category: "Interest", note: `${days} day${days > 1 ? "s" : ""} @ ${rate.toFixed(2)}% p.a.`,
-    };
-    d.savingsTx.push(tx);
+    });
     posted.push({ account: a.name, amount: interest });
   });
+
   return posted;
 }
 
@@ -385,7 +402,6 @@ function sampleData() {
   const [sal, emg, cash] = d.accounts;
   sal.balance = 184500; sal.lastAccrual = addDays(t, -4);
   emg.balance = 260000; emg.type = "Savings (FD linked)"; emg.lastAccrual = addDays(t, -4);
-  emg.rateMode = "custom"; emg.customRate = 6.75;
   cash.balance = 4200;
   d.cards.push({ id: uid(), name: "Travel card", limit: 120000 });
   const c1 = d.cards[0].id, c2 = d.cards[1].id;
@@ -594,7 +610,7 @@ export default function MoneyLedger() {
       tips.push(["Shared bills unsettled", `${fmt0(sharedPending)} of shared spending is still to come back to you. It's already out of your expense figures, but it isn't in your account yet.`]);
     const idle = r2(data.accounts.filter((a) => !a.earningInterest).reduce((s, a) => s + num(a.balance), 0));
     if (idle > 25000)
-      tips.push(["Idle cash", `${fmt0(idle)} sits in accounts marked as not earning interest. At ${(num(data.config.repoRate) + num(data.config.spread)).toFixed(2)}% that's roughly ${fmt0((idle * (num(data.config.repoRate) + num(data.config.spread))) / 100)} a year left on the table.`]);
+      tips.push(["Idle cash", `${fmt0(idle)} sits in accounts marked as not earning interest. At the repo rate of ${num(data.config.repoRate).toFixed(2)}% that's roughly ${fmt0((idle * num(data.config.repoRate)) / 100)} a year left on the table.`]);
     if (cardOutstanding > savingsTotal * 0.3 && cardOutstanding > 0)
       tips.push(["Card load is high", `Card outstanding is ${Math.round((cardOutstanding / Math.max(1, savingsTotal)) * 100)}% of your liquid savings. Clear the revolving portion first — no investment reliably beats card interest.`]);
     const emergency = r2(data.accounts.filter((a) => /emergency/i.test(a.name)).reduce((s, a) => s + num(a.balance), 0));
@@ -625,7 +641,7 @@ export default function MoneyLedger() {
     );
   }
 
-  const effRate = num(data.config.repoRate) + num(data.config.spread);
+  const effRate = num(data.config.repoRate);
   const TABS = [
     ["overview", "Overview"], ["savings", "Savings"], ["cards", "Cards"],
     ["emi", "Friends"], ["auto", "Auto-pay"], ["budget", "Budget"],
@@ -870,32 +886,20 @@ function Overview({ A, data, posted, setTab }) {
 
 /* ---------- SAVINGS ---------- */
 function Savings({ A, data, mutate, say, posted, effRate }) {
-  const [f, setF] = useState({ name: "", type: "", interest: true, balance: "", rate: "" });
+  const [f, setF] = useState({ name: "", type: "", interest: true, balance: "" });
   const [mv, setMv] = useState({ accountId: "", dir: "deposit", amount: "", category: "Transfer", kind: "Income", note: "" });
   const [open, setOpen] = useState(false);
   const [focus, setFocus] = useState(null);
-  const [rateEdit, setRateEdit] = useState(null);
-  const [rf, setRf] = useState({ on: true, mode: "repo", rate: "" });
   const todayPosted = posted.reduce((s, p) => s + p.amount, 0);
 
-  const openRate = (a) => {
-    setRateEdit(rateEdit === a.id ? null : a.id);
-    setRf({ on: !!a.earningInterest, mode: a.rateMode === "custom" ? "custom" : "repo", rate: String(a.customRate || "") });
-  };
-  const saveRate = (a) => {
-    if (rf.on && rf.mode === "custom" && !(num(rf.rate) > 0)) return say("Enter a rate above zero, or switch back to repo-linked.");
+  const toggleInterest = (a) => {
     mutate((d) => {
-      runAccrual(d); // settle interest at the old rate before anything changes
+      runAccrual(d); // settle what's already earned before the switch flips
       const x = d.accounts.find((z) => z.id === a.id);
-      x.earningInterest = rf.on;
-      x.rateMode = rf.mode;
-      x.customRate = rf.mode === "custom" ? num(rf.rate) : 0;
+      x.earningInterest = !x.earningInterest;
       x.lastAccrual = TODAY();
     });
-    setRateEdit(null);
-    say(!rf.on ? "Interest switched off for this account."
-      : rf.mode === "custom" ? `${a.name} now earns ${num(rf.rate).toFixed(2)}% on its own.`
-      : "Back on the repo-linked rate.");
+    say(a.earningInterest ? `Interest switched off for ${a.name}.` : `${a.name} now earns the repo rate.`);
   };
 
   const addAccount = () => {
@@ -904,11 +908,9 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
       d.accounts.push({
         id: uid(), name: f.name.trim(), type: f.type.trim() || "Savings",
         earningInterest: f.interest, balance: num(f.balance), lastAccrual: TODAY(), interestEarned: 0,
-        rateMode: f.interest && num(f.rate) > 0 ? "custom" : "repo",
-        customRate: f.interest && num(f.rate) > 0 ? num(f.rate) : 0,
       });
     });
-    setF({ name: "", type: "", interest: true, balance: "", rate: "" });
+    setF({ name: "", type: "", interest: true, balance: "" });
     setOpen(false);
     say("Account opened.");
   };
@@ -943,9 +945,9 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
     <>
       <div className="ml-stats">
         <Stat label="Total balance" value={fmt0(A.savingsTotal)} note={`${data.accounts.length} accounts`} />
-        <Stat label="Interest this month" value={fmt(A.interestMonth)} tone="credit" />
-        <Stat label="Repo-linked rate" value={`${effRate.toFixed(2)}%`} note="default — accounts can override" />
-        <Stat label="Earning daily" value={fmt(data.accounts.filter((a) => a.earningInterest).reduce((s, a) => s + (a.balance * rateFor(a, data.config)) / 100 / 365, 0))} note="at each account's own rate" />
+        <Stat label="Interest this month" value={fmt(A.interestMonth)} tone="credit" note={`${fmt(A.interestAll)} lifetime`} />
+        <Stat label="RBI repo rate" value={`${effRate.toFixed(2)}%`} note="set in Settings" />
+        <Stat label="Earning today" value={fmt(data.accounts.filter((a) => a.earningInterest).reduce((s, a) => s + (a.balance * effRate) / 100 / 365, 0))} note="one day at the repo rate" />
       </div>
 
       {todayPosted > 0 && (
@@ -962,7 +964,7 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
         {data.accounts.map((a, i) => (
           <Face key={a.id} tone={inkFor(ACC_INKS, i)}
             title={a.name}
-            sub={`${a.type}${a.earningInterest ? ` · earns ${rateFor(a, data.config).toFixed(2)}%` : " · no interest"}`}
+            sub={`${a.type}${a.earningInterest ? ` · earns ${effRate.toFixed(2)}%` : " · no interest"}`}
             rightLabel="Current balance" rightValue={fmt0(a.balance)}
             active={focus === a.id}
             onClick={() => setFocus(focus === a.id ? null : a.id)} />
@@ -993,31 +995,23 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
               <Field label="Opening balance">
                 <input className="ml-in ml-num" inputMode="decimal" value={f.balance} placeholder="0" onChange={(e) => setF({ ...f, balance: e.target.value })} />
               </Field>
-              {f.interest && (
-                <Field label="Its own rate (% p.a.)" span>
-                  <input className="ml-in ml-num" inputMode="decimal" value={f.rate}
-                    placeholder={`Leave blank to follow the repo rate (${effRate.toFixed(2)}%)`}
-                    onChange={(e) => setF({ ...f, rate: e.target.value })} />
-                </Field>
-              )}
             </div>
-            <div style={{ marginTop: 12 }}><button className="ml-btn" onClick={addAccount}>Open account</button></div>
+            <div className="ml-flex" style={{ marginTop: 12 }}>
+              <button className="ml-btn" onClick={addAccount}>Open account</button>
+              <span className="ml-sub">Interest-earning accounts all use the RBI repo rate set in Settings.</span>
+            </div>
             <hr className="ml-hr" />
           </>
         )}
 
         <div style={{ marginTop: open ? 0 : 12 }}>
-          {data.accounts.map((a) => {
-            const aRate = rateFor(a, data.config);
-            const custom = a.rateMode === "custom";
-            return (
+          {data.accounts.map((a) => (
             <div key={a.id} style={{ padding: "11px 0", borderBottom: "1px solid var(--rule-soft)" }}>
               <div className="ml-between">
                 <div>
                   <div style={{ fontWeight: 600 }}>{a.name}</div>
                   <div className="ml-sub" style={{ marginTop: 3 }}>
-                    {a.type} · <span className={"ml-pill " + (a.earningInterest ? "on" : "off")}>{a.earningInterest ? `Earns ${aRate.toFixed(2)}%` : "No interest"}</span>
-                    {a.earningInterest && <span className="ml-pill" style={{ marginLeft: 5 }}>{custom ? "Own rate" : "Repo-linked"}</span>}
+                    {a.type} · <span className={"ml-pill " + (a.earningInterest ? "on" : "off")}>{a.earningInterest ? `Earns ${effRate.toFixed(2)}% daily` : "No interest"}</span>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -1026,8 +1020,8 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
                 </div>
               </div>
               <div className="ml-flex" style={{ marginTop: 8 }}>
-                <button className="ml-btn ghost sm" onClick={() => openRate(a)}>
-                  {rateEdit === a.id ? "Hide rate" : "Interest & rate"}
+                <button className="ml-btn ghost sm" onClick={() => toggleInterest(a)}>
+                  {a.earningInterest ? "Stop earning interest" : "Start earning interest"}
                 </button>
                 <button className="ml-btn ghost sm" onClick={() => {
                   if (data.accounts.length <= 1) return say("Keep at least one account.");
@@ -1035,45 +1029,8 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
                   say("Account removed.");
                 }}>Remove account</button>
               </div>
-
-              {rateEdit === a.id && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--rule-soft)" }}>
-                  <div className="ml-form">
-                    <Field label="Earning interest">
-                      <div className="ml-seg">
-                        <button data-on={rf.on ? "1" : "0"} onClick={() => setRf({ ...rf, on: true })}>Yes</button>
-                        <button data-on={!rf.on ? "1" : "0"} onClick={() => setRf({ ...rf, on: false })}>No</button>
-                      </div>
-                    </Field>
-                    {rf.on && (
-                      <Field label="Which rate">
-                        <div className="ml-seg">
-                          <button data-on={rf.mode === "repo" ? "1" : "0"} onClick={() => setRf({ ...rf, mode: "repo" })}>Repo-linked</button>
-                          <button data-on={rf.mode === "custom" ? "1" : "0"} onClick={() => setRf({ ...rf, mode: "custom" })}>Own rate</button>
-                        </div>
-                      </Field>
-                    )}
-                    {rf.on && rf.mode === "custom" && (
-                      <Field label="This account's rate (% p.a.)" span>
-                        <input className="ml-in ml-num" inputMode="decimal" value={rf.rate}
-                          placeholder={effRate.toFixed(2)} onChange={(e) => setRf({ ...rf, rate: e.target.value })} />
-                      </Field>
-                    )}
-                  </div>
-                  <div className="ml-flex" style={{ marginTop: 10 }}>
-                    <button className="ml-btn sm" onClick={() => saveRate(a)}>Save</button>
-                    <button className="ml-btn ghost sm" onClick={() => setRateEdit(null)}>Cancel</button>
-                  </div>
-                  <div className="ml-sub" style={{ marginTop: 8 }}>
-                    {!rf.on ? "Nothing will accrue on this account."
-                      : rf.mode === "repo" ? `Moves with the repo rate in Settings — ${effRate.toFixed(2)}% today.`
-                      : "Fixed at whatever you enter. Changing the repo rate won't touch it."}
-                    {" Interest already earned is settled at the old rate before the change applies."}
-                  </div>
-                </div>
-              )}
             </div>
-          );})}
+          ))}
         </div>
       </div>
 
@@ -1926,19 +1883,18 @@ function Backup({ A, data, mutate, setData, say }) {
 /* ---------- SETTINGS ---------- */
 function Settings({ A, data, mutate, setData, say, setPosted, where }) {
   const [rate, setRate] = useState(String(data.config.repoRate));
-  const [spread, setSpread] = useState(String(data.config.spread));
   const [income, setIncome] = useState(String(data.config.monthlyIncome || ""));
   const [newCat, setNewCat] = useState("");
   const [armed, setArmed] = useState(false);
 
   const applyRate = () => {
+    if (!(num(rate) >= 0)) return say("Enter a rate of zero or more.");
     mutate((d) => {
       runAccrual(d); // settle interest at the old rate first
       d.config.repoRate = num(rate);
-      d.config.spread = num(spread);
     });
     setPosted([]);
-    say(`Rate set to ${(num(rate) + num(spread)).toFixed(2)}%. Interest settled up to today at the old rate.`);
+    say(`Repo rate set to ${num(rate).toFixed(2)}%. Interest up to today was settled at the old rate.`);
   };
 
   return (
@@ -1946,21 +1902,18 @@ function Settings({ A, data, mutate, setData, say, setPosted, where }) {
       <div className="ml-card">
         <div className="ml-eyebrow">Interest engine</div>
         <div className="ml-sub" style={{ marginTop: 4, marginBottom: 12 }}>
-          This is the rate for every repo-linked account, and the only place it can be set. Update it whenever the RBI
-          moves and those accounts follow from the next accrual onwards. An account can opt out and carry its own fixed
-          rate instead — set that on the account itself, under Savings.
+          The RBI repo rate is the one and only interest rate in this app. Every account marked as earning interest
+          uses it — there are no per-account rates. Update it here whenever the RBI moves and every account follows
+          from the next day's accrual onwards.
         </div>
         <div className="ml-form">
-          <Field label="RBI repo rate (% p.a.)">
+          <Field label="RBI repo rate (% p.a.)" span>
             <input className="ml-in ml-num" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />
-          </Field>
-          <Field label="Your bank's spread over repo (%)">
-            <input className="ml-in ml-num" inputMode="decimal" value={spread} onChange={(e) => setSpread(e.target.value)} />
           </Field>
         </div>
         <div className="ml-flex" style={{ marginTop: 12 }}>
           <button className="ml-btn" onClick={applyRate}>Update rate</button>
-          <span className="ml-sub ml-num">Effective {(num(rate) + num(spread)).toFixed(2)}% p.a. → {((num(rate) + num(spread)) / 365).toFixed(5)}% a day, compounded daily.</span>
+          <span className="ml-sub ml-num">{num(rate).toFixed(2)}% a year → {(num(rate) / 365).toFixed(5)}% a day, compounded daily.</span>
         </div>
       </div>
 
@@ -2031,7 +1984,7 @@ function Settings({ A, data, mutate, setData, say, setPosted, where }) {
       <div className="ml-card">
         <div className="ml-eyebrow">How the numbers are built</div>
         <ul style={{ fontSize: 13, color: "var(--body)", paddingLeft: 18, marginTop: 8, lineHeight: 1.7 }}>
-          <li>Interest compounds daily on interest-earning accounts, posted for every day since the last visit — each at its own rate, whether that's the repo-linked one or a rate you fixed for that account.</li>
+          <li>Interest is driven solely by the RBI repo rate in this tab. It compounds daily on every account marked as earning interest, and one entry covers every day since your last visit — so the total is the same whether you open the app daily or once a year.</li>
           <li>Investment, Transfer and Card Payment entries never reach the expense column or the category chart.</li>
           <li>Friends' EMI instalments raise the card outstanding but stay out of your spending — they're a receivable.</li>
           <li>Scheduled payments catch up on load, so a month away still lands the right number of instalments.</li>
