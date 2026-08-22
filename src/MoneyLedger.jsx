@@ -14,6 +14,7 @@ const CSS = `
 .ml-root{
   --paper:#E7E5DC; --sheet:#FCFBF8; --ink:#1A1D24; --soft:#6E7280;
   --rule:#D6D2C6; --rule-soft:#E8E4DA; --field:#FFFFFF; --body:#3D424C;
+  --ctl:40px; --ctlpad:8px 10px; --ctlfont:16px;
   --credit:#1B6B54; --debit:#A63A2A; --stamp:#27408B; --amber:#8F6212;
   color-scheme:light;
   background:var(--paper); color:var(--ink);
@@ -24,12 +25,9 @@ const CSS = `
 }
 .ml-root *{box-sizing:border-box;}
 .ml-root button{font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation;}
-.ml-root input,.ml-root select,.ml-root textarea{font-family:inherit;font-size:16px;
+.ml-root input,.ml-root select,.ml-root textarea{font-family:inherit;font-size:var(--ctlfont);
   -webkit-appearance:none;appearance:none;border-radius:2px;max-width:100%;}
 .ml-root :focus-visible{outline:2px solid var(--stamp);outline-offset:2px;}
-.ml-root input[type="date"]{min-width:0;display:block;text-align:left;}
-.ml-root input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0;}
-.ml-root input[type="date"]::-webkit-calendar-picker-indicator{opacity:.55;}
 
 /* One switch: every surface, rule and figure below reads from these. */
 .ml-root[data-theme="dark"]{
@@ -59,7 +57,7 @@ const CSS = `
 .ml-brand{font-family:'Archivo',sans-serif;font-weight:700;font-size:19px;letter-spacing:.04em;text-transform:uppercase;line-height:1;}
 .ml-brand span{color:var(--stamp);}
 .ml-brandsub{font-size:11px;color:var(--soft);margin-top:4px;letter-spacing:.02em;}
-.ml-nw{text-align:right;}
+.ml-nw{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
 .ml-theme{width:36px;height:36px;min-height:36px;flex:0 0 auto;border:1px solid var(--rule);border-radius:2px;
   background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;}
 .ml-theme:hover{background:var(--sheet);border-color:var(--ink);}
@@ -73,13 +71,27 @@ const CSS = `
 .ml-tab[data-on="1"]{color:var(--ink);border-bottom-color:var(--stamp);}
 
 /* ---- cards ---- */
-.ml-card{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;padding:16px;margin-top:14px;}
+.ml-card{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;padding:14px;margin-top:12px;}
 .ml-card>.ml-eyebrow:first-child{display:block;margin-bottom:10px;}
-.ml-grid{display:grid;gap:14px;}
-@media(min-width:780px){.ml-2{grid-template-columns:1fr 1fr;}.ml-3{grid-template-columns:repeat(3,1fr);}}
-.ml-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;margin-top:14px;overflow:hidden;}
-@media(min-width:680px){.ml-stats{grid-template-columns:repeat(4,1fr);}}
-.ml-stat{background:var(--sheet);padding:13px 14px;}
+.ml-grid{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr;}
+.ml-page{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr;}
+.ml-page>*{min-width:0;margin-top:0;}
+@media(min-width:680px){
+  .ml-page{grid-template-columns:repeat(6,1fr);}
+  .ml-page>.ml-w6{grid-column:span 6;}
+  .ml-page>.ml-w3{grid-column:span 3;}
+  .ml-page>.ml-w2{grid-column:span 2;}
+}
+.ml-grid>*{min-width:0;}
+.ml-grid>.ml-card{margin-top:0;}
+.ml-card{width:100%;}
+.ml-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;margin-top:12px;overflow:hidden;}
+@media(min-width:680px){
+  .ml-stats{grid-template-columns:repeat(var(--cols,4),1fr);}
+  .ml-2{grid-template-columns:repeat(2,1fr);}
+  .ml-3{grid-template-columns:repeat(3,1fr);}
+}
+.ml-stat{background:var(--sheet);padding:11px 12px;}
 .ml-statv{font-size:17px;font-weight:600;margin-top:5px;line-height:1.2;}
 .ml-statn{font-size:10.5px;color:var(--soft);margin-top:2px;}
 
@@ -94,8 +106,10 @@ const CSS = `
 .ml-lmeta{font-size:11px;color:var(--soft);margin-top:2px;overflow-wrap:anywhere;}
 .ml-lcell{text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;}
 .ml-debit{color:var(--debit);} .ml-credit{color:var(--credit);} .ml-invest{color:var(--stamp);}
-.ml-x{background:none;border:0;color:var(--soft);font-size:17px;line-height:1;padding:2px 4px;border-radius:2px;min-width:32px;min-height:32px;}
+.ml-x{background:none;border:0;color:var(--soft);font-size:17px;line-height:1;padding:2px 4px;border-radius:2px;
+  min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;}
 .ml-x:hover{color:var(--debit);background:var(--paper);}
+.ml-eye{position:relative;}
 @media(max-width:700px){
   .ml-lhead{display:none;}
   .ml-lrow{grid-template-columns:minmax(0,1fr) 26px;row-gap:3px;}
@@ -106,23 +120,23 @@ const CSS = `
 }
 
 /* ---- forms ---- */
-.ml-form{display:grid;gap:10px;grid-template-columns:1fr;}
+.ml-form{display:grid;gap:9px;grid-template-columns:1fr;}
 @media(min-width:620px){.ml-form{grid-template-columns:repeat(2,1fr);}.ml-span{grid-column:1/-1;}}
-.ml-f label{display:block;font-family:'Archivo',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);margin-bottom:4px;}
-.ml-in{width:100%;padding:10px;border:1px solid var(--rule);border-radius:2px;background:var(--field);color:var(--ink);min-height:44px;line-height:1.25;}
+.ml-f label{display:block;font-family:'Archivo',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--soft);margin-bottom:3px;}
+.ml-in{width:100%;padding:var(--ctlpad);border:1px solid var(--rule);border-radius:2px;background:var(--field);color:var(--ink);min-height:var(--ctl);line-height:1.25;font-size:var(--ctlfont);}
 .ml-in:focus{border-color:var(--stamp);}
 select.ml-in{-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--soft) 50%),linear-gradient(135deg,var(--soft) 50%,transparent 50%);background-position:calc(100% - 15px) 51%,calc(100% - 10px) 51%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px;}
 .ml-btn{padding:8px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:2px;
   font-family:'Archivo',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-  min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-align:center;}
+  min-height:var(--ctl);display:inline-flex;align-items:center;justify-content:center;text-align:center;}
 .ml-btn:hover{background:#000;}
 .ml-btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule);}
 .ml-btn.ghost:hover{background:var(--paper);border-color:var(--ink);}
 .ml-btn.danger{background:transparent;color:var(--debit);border-color:var(--debit);}
 .ml-btn.danger:hover{background:var(--debit);color:var(--sheet);}
-.ml-btn.sm{padding:5px 10px;font-size:10px;min-height:34px;}
+.ml-btn.sm{padding:4px 10px;font-size:10px;min-height:30px;}
 .ml-seg{display:inline-flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden;}
-.ml-seg button{padding:8px 16px;border:0;background:var(--field);color:var(--soft);font-family:'Archivo',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;min-height:44px;}
+.ml-seg button{padding:8px 16px;border:0;background:var(--field);color:var(--soft);font-family:'Archivo',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;min-height:var(--ctl);}
 .ml-seg button[data-on="1"]{background:var(--ink);color:var(--paper);}
 
 /* ---- stamp (signature) ---- */
@@ -150,7 +164,59 @@ select.ml-in{-webkit-appearance:none;appearance:none;background-image:linear-gra
 .ml-hr{border:0;border-top:1px solid var(--rule-soft);margin:14px 0;}
 .ml-flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .ml-between{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-.ml-ta{width:100%;min-height:110px;padding:10px;border:1px solid var(--rule);border-radius:2px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:16px;line-height:1.4;background:var(--field);color:var(--ink);word-break:break-all;}
+.ml-ta{width:100%;min-height:100px;padding:9px;border:1px solid var(--rule);border-radius:2px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:16px;line-height:1.4;background:var(--field);color:var(--ink);word-break:break-all;}
+/* ---- modal ---- */
+.ml-scrim{position:fixed;inset:0;z-index:80;background:rgba(20,22,27,.45);display:flex;
+  align-items:center;justify-content:center;padding:16px;}
+.ml-modal{width:100%;max-width:440px;max-height:82vh;display:flex;flex-direction:column;
+  background:var(--sheet);border:1px solid var(--rule);border-radius:4px;box-shadow:0 20px 50px rgba(0,0,0,.28);}
+.ml-modalhead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border-bottom:1px solid var(--rule);}
+.ml-modalbody{padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* ---- custom select ---- */
+.ml-pick{position:relative;width:100%;}
+.ml-pickbtn{width:100%;min-height:var(--ctl);padding:var(--ctlpad);padding-right:30px;border:1px solid var(--rule);border-radius:2px;
+  background:var(--field);color:var(--ink);text-align:left;font-size:var(--ctlfont);line-height:1.25;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ml-pickbtn:hover{border-color:var(--soft);}
+.ml-pick.open .ml-pickbtn{border-color:var(--stamp);}
+.ml-picklabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ml-chev{position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:1.5px solid var(--soft);
+  border-bottom:1.5px solid var(--soft);transform:translateY(-70%) rotate(45deg);pointer-events:none;}
+.ml-pick.open .ml-chev{transform:translateY(-30%) rotate(-135deg);border-color:var(--stamp);}
+.ml-pickmenu{position:absolute;z-index:40;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;background:var(--sheet);border:1px solid var(--rule);border-radius:3px;
+  box-shadow:0 10px 28px rgba(0,0,0,.16);padding:4px;}
+.ml-pickopt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;
+  padding:9px 10px;border:0;background:none;color:var(--ink);border-radius:2px;font-size:14px;min-height:40px;}
+.ml-pickopt:hover{background:var(--paper);}
+.ml-pickopt.on{background:var(--paper);font-weight:600;}
+.ml-pickopt.on::after{content:"✓";position:absolute;right:14px;color:var(--stamp);}
+.ml-pickhint{font-size:11px;color:var(--soft);font-weight:400;}
+.ml-pick.sm .ml-pickbtn{min-height:34px;padding:5px 26px 5px 8px;font-size:12px;border-color:transparent;background:transparent;}
+.ml-pick.sm .ml-chev{right:8px;width:6px;height:6px;}
+.ml-pick.sm .ml-pickmenu{left:auto;right:0;min-width:210px;}
+
+/* ---- custom date field ---- */
+.ml-cal{position:absolute;z-index:40;top:calc(100% + 4px);left:0;width:280px;max-width:calc(100vw - 40px);
+  background:var(--sheet);border:1px solid var(--rule);border-radius:3px;box-shadow:0 10px 28px rgba(0,0,0,.16);padding:10px;}
+.ml-calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.ml-calnav{width:30px;height:30px;min-height:30px;border:1px solid var(--rule);border-radius:2px;background:none;
+  color:var(--ink);display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
+.ml-calnav:hover{border-color:var(--ink);}
+.ml-calmon{font-family:'Archivo',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+.ml-calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.ml-caldow{font-family:'Archivo',sans-serif;font-size:9px;font-weight:600;letter-spacing:.06em;color:var(--soft);
+  text-align:center;padding:4px 0;text-transform:uppercase;}
+.ml-calday{aspect-ratio:1/1;min-height:32px;border:0;background:none;border-radius:2px;color:var(--ink);
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;display:flex;align-items:center;justify-content:center;}
+.ml-calday:hover{background:var(--paper);}
+.ml-calday.on{background:var(--ink);color:var(--paper);font-weight:600;}
+.ml-calday.today{box-shadow:inset 0 0 0 1px var(--stamp);}
+.ml-calday.mute{visibility:hidden;}
+.ml-calfoot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--rule-soft);}
+
 /* ---- wallet faces ---- */
 .ml-wallet{display:flex;gap:12px;margin-top:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;
   scroll-snap-type:x mandatory;padding:2px 0 6px;scrollbar-width:none;}
@@ -177,6 +243,10 @@ select.ml-in{-webkit-appearance:none;appearance:none;background-image:linear-gra
   text-transform:uppercase;opacity:.72;}
 .ml-faceval{font-size:13.5px;font-weight:600;margin-top:2px;}
 .ml-filter{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+/* Desktop has no zoom-on-focus problem, so controls can tighten up there. */
+@media(min-width:780px){
+  .ml-root{--ctl:34px; --ctlpad:6px 9px; --ctlfont:14px;}
+}
 @media(prefers-reduced-motion:reduce){.ml-root *{animation:none!important;transition:none!important;}}
 `;
 
@@ -220,20 +290,23 @@ const compact = (n) => {
 };
 
 /* Categories that are never counted as a standard expense. */
-const NON_EXPENSE = ["Investment", "Transfer", "Card Payment", "Settlement", "Refund"];
-/* Credits that raise a balance but are not income. */
-const NON_INCOME = ["Settlement", "Transfer", "Refund", "Card Payment"];
+/* Categories that start out excluded from spend analysis. The user can change
+   any of these, and exclude or include any category they add. */
+const DEFAULT_EXCLUDED = ["Investment", "Transfer", "Card Payment", "Settlement", "Refund"];
+/* Excluded categories still move the balance — they just don't count as spending. */
+const isExcluded = (config, cat) => (config.excluded || DEFAULT_EXCLUDED).includes(cat);
 const BASE_CATEGORIES = [
   "Groceries", "Dining", "Utilities", "Rent", "Travel", "Fuel", "Shopping",
   "Health", "Entertainment", "Subscriptions", "Education", "Loan EMI",
   "Investment", "Transfer", "Card Payment", "Settlement", "Refund", "Other",
 ];
-/* What a credit into an account can be. Only Income counts as income. */
+/* What a credit into an account can be. None of these count as income —
+   income is the figure you set in Settings and is never a ledger entry. */
 const DEPOSIT_KINDS = [
-  ["Income", "salary, freelance, anything you earned"],
   ["Settlement", "a friend paying you back for a shared bill"],
-  ["Transfer", "moved in from another account of yours"],
+  ["Transfer", "moved in from another account of yours, or salary landing"],
   ["Refund", "money returned to you"],
+  ["Other", "anything else that raises the balance"],
 ];
 
 /* Flat printed-ink tones, cycled by position. Deeper set for cards, cooler set for accounts. */
@@ -287,11 +360,39 @@ const MoonIcon = () => (
   </svg>
 );
 
+const TrashIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 6.5h16M9.5 6.5V4.8h5v1.7M6.4 6.5l.8 12.1a1.5 1.5 0 0 0 1.5 1.4h6.6a1.5 1.5 0 0 0 1.5-1.4l.8-12.1M10.2 10v6.4M13.8 10v6.4" />
+  </svg>
+);
+const EyeIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="2.9" />
+  </svg>
+);
+const EyeOffIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9.6 6.1A9.6 9.6 0 0 1 12 5.8c6 0 9.5 6.2 9.5 6.2a17 17 0 0 1-3 3.8M6.4 8.1A17 17 0 0 0 2.5 12S6 18.2 12 18.2c1.3 0 2.4-.3 3.4-.7" />
+    <path d="M10 10a2.9 2.9 0 0 0 4 4M3.5 3.5l17 17" />
+  </svg>
+);
+
+/* Figures the user may not want visible over their shoulder. Ledger entries
+   stay readable; balances and totals are what get hidden. */
+let MASKED = false;
+const mask = (v) => (MASKED ? "••••" : v);
+
 /* ---------- initial state ---------- */
 const blank = () => ({
   config: {
     repoRate: 5.25,          // set in the Settings tab — the only source of the rate
     monthlyIncome: 0,
+    hidden: false,
+    excluded: DEFAULT_EXCLUDED.slice(),
     lastBackup: "",
     theme: "",
     categories: BASE_CATEGORIES.slice(),
@@ -446,6 +547,8 @@ export default function MoneyLedger() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("overview");
   const [toast, setToast] = useState("");
+  const [view, setView] = useState("total");
+  const [hidden, setHidden] = useState(false);
   const [theme, setTheme] = useState(() => {
     try {
       return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -465,6 +568,7 @@ export default function MoneyLedger() {
       runRecurring(d);
       if (!alive) return;
       if (d.config.theme === "dark" || d.config.theme === "light") setTheme(d.config.theme);
+      if (d.config.hidden) setHidden(true);
       setPosted(p);
       setData(d);
       loaded.current = true;
@@ -481,6 +585,12 @@ export default function MoneyLedger() {
 
   const say = (m) => { setToast(m); setTimeout(() => setToast(""), 2200); };
   const dark = theme === "dark";
+  MASKED = hidden;
+  const toggleHidden = () => {
+    const next = !hidden;
+    setHidden(next);
+    if (loaded.current) mutate((d) => { d.config.hidden = next; });
+  };
   const toggleTheme = () => {
     const next = dark ? "light" : "dark";
     setTheme(next);
@@ -518,7 +628,7 @@ export default function MoneyLedger() {
     /* A shared bill: you paid it all, but only your slice is your expense. */
     const share = (f) => Math.max(0, Math.min(num(f.shareAmount), num(f.amount)));
     const mine = (f) => r2(num(f.amount) - share(f));
-    const isExpense = (f) => !NON_EXPENSE.includes(f.category);
+    const isExpense = (f) => !isExcluded(data.config, f.category);
     const expenses = flows.filter(isExpense);
     const investments = flows.filter((f) => f.category === "Investment");
 
@@ -558,9 +668,15 @@ export default function MoneyLedger() {
 
     const cardRows = data.cards.map((c) => {
       const own = r2(data.spends.filter((s) => s.cardId === c.id).reduce((s, x) => s + num(x.amount), 0));
-      const friends = r2(emiRows.filter((e) => e.cardId === c.id).reduce((s, e) => s + Math.min(num(e.principal), e.due * e.monthly), 0));
+      const mine = emiRows.filter((e) => e.cardId === c.id);
+      /* Billed: only the instalments whose month has come due are payable now. */
+      const emiDue = r2(mine.reduce((s, e) => s + Math.min(num(e.principal), e.due * e.monthly), 0));
+      /* Blocked: the rest of the purchase still sits against the limit until repaid. */
+      const blocked = r2(mine.reduce((s, e) => s + Math.max(0, e.outstanding), 0));
       const paid = r2(data.savingsTx.filter((t) => t.type === "card-payment" && t.cardId === c.id).reduce((s, t) => s + num(t.amount), 0));
-      return { ...c, own, friends, paid, outstanding: r2(own + friends - paid) };
+      const outstanding = r2(own + emiDue - paid);
+      const used = r2(own - paid + blocked);
+      return { ...c, own, friends: emiDue, emiDue, blocked, paid, outstanding, used, available: r2(num(c.limit) - used) };
     });
     const cardOutstanding = r2(cardRows.reduce((s, c) => s + c.outstanding, 0));
 
@@ -572,11 +688,8 @@ export default function MoneyLedger() {
     const receivableTotal = r2(receivable + sharedPending);
     const netWorth = r2(savingsTotal + receivableTotal - cardOutstanding - loanRemaining);
 
-    /* settlements and transfers raise the balance but are never income */
-    const income = num(data.config.monthlyIncome) ||
-      r2(data.savingsTx
-        .filter((t) => t.type === "deposit" && !NON_INCOME.includes(t.category) && t.date.slice(0, 7) === thisMonth)
-        .reduce((s, t) => s + num(t.amount), 0));
+    /* Income is an analysis figure set in Settings — never derived from entries. */
+    const income = num(data.config.monthlyIncome);
     const saved = r2(income - spentMonth);
     const saveRate = income > 0 ? Math.round((saved / income) * 100) : null;
     const avgSpend = r2(months.slice(0, 5).reduce((s, m) => s + m.spend, 0) / 5) || spentMonth;
@@ -593,6 +706,8 @@ export default function MoneyLedger() {
 
     /* dynamic tips */
     const tips = [];
+    if (income <= 0)
+      tips.push(["Set your monthly income", "Without it there's no save rate to work from. Put your take-home in Settings — it's used for analysis only and never becomes a transaction."]);
     if (saveRate !== null && saveRate < 20)
       tips.push(["Your save rate is thin", `You're keeping ${saveRate}% of income this month. Move ₹${Math.max(2000, Math.round((income * 0.2 - saved) / 500) * 500).toLocaleString("en-IN")} to the emergency fund on salary day, before spending starts.`]);
     if (saveRate !== null && saveRate >= 35)
@@ -607,7 +722,7 @@ export default function MoneyLedger() {
     if (overdueTotal > 0)
       tips.push(["Friends owe you", `${fmt0(overdueTotal)} of friends' EMIs are past due. Your card gets billed on schedule whether or not they pay — nudge them.`]);
     if (sharedPending > 0)
-      tips.push(["Shared bills unsettled", `${fmt0(sharedPending)} of shared spending is still to come back to you. It's already out of your expense figures, but it isn't in your account yet.`]);
+      tips.push(["Shared bills unsettled", `${fmt0(sharedPending)} of shared spending is still to come back to you. It's already out of your expense figures, but it isn't in your account yet — the Shared tab lists what's open.`]);
     const idle = r2(data.accounts.filter((a) => !a.earningInterest).reduce((s, a) => s + num(a.balance), 0));
     if (idle > 25000)
       tips.push(["Idle cash", `${fmt0(idle)} sits in accounts marked as not earning interest. At the repo rate of ${num(data.config.repoRate).toFixed(2)}% that's roughly ${fmt0((idle * num(data.config.repoRate)) / 100)} a year left on the table.`]);
@@ -623,6 +738,7 @@ export default function MoneyLedger() {
     return {
       share, mine, sharedRows, sharedBilled, sharedPending, settledIn, receivableTotal,
       today, thisMonth, cardOf, accOf, emiRows, receivable, emiBilled, flows, expenses, investments,
+      cardBlocked: r2(cardRows.reduce((s, c) => s + c.blocked, 0)),
       spentMonth, investedMonth, catRows, months, interestMonth, interestAll, cardRows, cardOutstanding,
       savingsTotal, loanRemaining, netWorth, income, saved, saveRate, avgSpend, budgetRows, upcoming,
       tips: tips.slice(0, 5), overdueTotal, recoverableIds,
@@ -642,9 +758,28 @@ export default function MoneyLedger() {
   }
 
   const effRate = num(data.config.repoRate);
+
+  /* What the header shows: everything, one account, or one card. */
+  const balanceViews = [
+    { value: "total", label: "Total balance" },
+    ...data.accounts.map((a) => ({ value: `a:${a.id}`, label: a.name })),
+    ...A.cardRows.map((c) => ({ value: `c:${c.id}`, label: c.name })),
+  ];
+  const resolveView = () => {
+    if (view.startsWith("a:")) {
+      const a = data.accounts.find((x) => x.id === view.slice(2));
+      if (a) return { value: a.balance, note: a.earningInterest ? `earning ${effRate.toFixed(2)}% p.a.` : a.type };
+    }
+    if (view.startsWith("c:")) {
+      const c = A.cardRows.find((x) => x.id === view.slice(2));
+      if (c) return { value: -c.outstanding, note: `${fmt0(c.available)} available` };
+    }
+    return { value: A.savingsTotal, note: `across ${data.accounts.length} account${data.accounts.length > 1 ? "s" : ""}` };
+  };
+  const shown = resolveView();
   const TABS = [
-    ["overview", "Overview"], ["savings", "Savings"], ["cards", "Cards"],
-    ["emi", "Friends"], ["auto", "Auto-pay"], ["budget", "Budget"],
+    ["overview", "Overview"], ["accounts", "Accounts"], ["cards", "Cards"],
+    ["shared", "Shared"], ["emi", "Friends"], ["auto", "Auto-pay"], ["budget", "Budget"],
     ["backup", "Backup"], ["settings", "Settings"],
   ];
 
@@ -656,18 +791,26 @@ export default function MoneyLedger() {
         <div className="ml-topin">
           <div className="ml-headline">
             <div className="ml-brand">Money <span>Ledger</span></div>
-            <button className="ml-theme" onClick={toggleTheme} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-              title={dark ? "Light mode" : "Dark mode"}>
-              {dark ? <SunIcon /> : <MoonIcon />}
-            </button>
+            <div className="ml-flex" style={{ flexWrap: "nowrap", gap: 6 }}>
+              <button className="ml-theme" onClick={toggleHidden}
+                aria-label={hidden ? "Show figures" : "Hide figures"}
+                title={hidden ? "Show figures" : "Hide figures"}>
+                {hidden ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+              <button className="ml-theme" onClick={toggleTheme} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+                title={dark ? "Light mode" : "Dark mode"}>
+                {dark ? <SunIcon /> : <MoonIcon />}
+              </button>
+            </div>
           </div>
           <div className="ml-brandrow">
             <div className="ml-brandsub">
               {`${A.today.slice(8, 10)} ${MON[Number(A.today.slice(5, 7)) - 1]} ${A.today.slice(0, 4)}`}
             </div>
             <div className="ml-nw">
-              <div className="ml-eyebrow">Net position</div>
-              <div className="ml-nwv ml-num" style={{ color: A.netWorth < 0 ? "var(--debit)" : "var(--ink)" }}>{fmt0(A.netWorth)}</div>
+              <Pick small value={view} onChange={setView} options={balanceViews} />
+              <div className="ml-nwv ml-num" style={{ color: shown.value < 0 ? "var(--debit)" : "var(--ink)" }}>{mask(fmt0(shown.value))}</div>
+              {shown.note && <div className="ml-statn" style={{ textAlign: "right" }}>{hidden ? "hidden" : shown.note}</div>}
             </div>
           </div>
           <nav className="ml-tabs">
@@ -680,8 +823,9 @@ export default function MoneyLedger() {
 
       <main className="ml-wrap">
         {tab === "overview" && <Overview A={A} data={data} posted={posted} setTab={setTab} />}
-        {tab === "savings" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} />}
+        {tab === "accounts" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} />}
         {tab === "cards" && <Cards A={A} data={data} mutate={mutate} say={say} />}
+        {tab === "shared" && <SharedPanel A={A} data={data} mutate={mutate} say={say} />}
         {tab === "emi" && <Emis A={A} data={data} mutate={mutate} say={say} />}
         {tab === "auto" && <Auto A={A} data={data} mutate={mutate} say={say} />}
         {tab === "budget" && <Budget A={A} data={data} mutate={mutate} say={say} />}
@@ -695,10 +839,10 @@ export default function MoneyLedger() {
 }
 
 /* ---------- small building blocks ---------- */
-const Stat = ({ label, value, note, tone }) => (
+const Stat = ({ label, value, note, tone, raw }) => (
   <div className="ml-stat">
     <div className="ml-eyebrow">{label}</div>
-    <div className="ml-statv ml-num" style={tone ? { color: `var(--${tone})` } : null}>{value}</div>
+    <div className="ml-statv ml-num" style={tone ? { color: `var(--${tone})` } : null}>{raw ? value : mask(value)}</div>
     {note && <div className="ml-statn">{note}</div>}
   </div>
 );
@@ -728,15 +872,148 @@ function Face({ tone, title, sub, leftLabel, leftValue, rightLabel, rightValue, 
         <div className="ml-facefoot">
           <div>
             {leftLabel && <div className="ml-facelab">{leftLabel}</div>}
-            {leftValue && <div className="ml-faceval ml-num">{leftValue}</div>}
+            {leftValue && <div className="ml-faceval ml-num">{mask(leftValue)}</div>}
           </div>
           <div style={{ textAlign: "right" }}>
             {rightLabel && <div className="ml-facelab">{rightLabel}</div>}
-            {rightValue && <div className="ml-faceval ml-num">{rightValue}</div>}
+            {rightValue && <div className="ml-faceval ml-num">{mask(rightValue)}</div>}
           </div>
         </div>
       </div>
     </button>
+  );
+}
+
+/* A small window over the app, for configuration that would otherwise
+   swamp the page it belongs to. */
+function Modal({ title, subtitle, onClose, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="ml-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="ml-modal" role="dialog" aria-modal="true">
+        <div className="ml-modalhead">
+          <div>
+            <div className="ml-eyebrow">{title}</div>
+            {subtitle && <div className="ml-sub" style={{ marginTop: 2 }}>{subtitle}</div>}
+          </div>
+          <button className="ml-x" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className="ml-modalbody">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* Keeps every stat cell the same size whether a tab shows two or four. */
+const StatRow = ({ children }) => (
+  <div className="ml-stats ml-w6" style={{ ["--cols"]: React.Children.count(children) }}>{children}</div>
+);
+
+/* Closes a popup on an outside tap or Escape. */
+function useDismiss(open, close) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) close(); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("touchstart", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("touchstart", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, close]);
+  return ref;
+}
+
+/* Select, in the app's own type and colours rather than the browser's. */
+function Pick({ value, onChange, options, placeholder, small }) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  const cur = options.find((o) => o.value === value);
+  return (
+    <div className={"ml-pick" + (small ? " sm" : "") + (open ? " open" : "")} ref={ref}>
+      <button type="button" className="ml-pickbtn" aria-haspopup="listbox" aria-expanded={open}
+        onClick={() => setOpen(!open)}>
+        <span className="ml-picklabel">{cur ? cur.label : (placeholder || "Select")}</span>
+        <span className="ml-chev" />
+      </button>
+      {open && (
+        <div className="ml-pickmenu" role="listbox">
+          {options.length === 0 && <div className="ml-pickopt ml-sub">Nothing to choose from</div>}
+          {options.map((o) => (
+            <button key={o.value} type="button" role="option" aria-selected={o.value === value}
+              className={"ml-pickopt" + (o.value === value ? " on" : "")}
+              onClick={() => { onChange(o.value); setOpen(false); }}>
+              <span>{o.label}</span>
+              {o.hint && <span className="ml-pickhint">{o.hint}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const DOW = ["S", "M", "T", "W", "T", "F", "S"];
+
+/* Date field with the app's own calendar instead of the browser's. */
+function DateField({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  const [view, setView] = useState((value || TODAY()).slice(0, 7));
+  useEffect(() => { if (open) setView((value || TODAY()).slice(0, 7)); }, [open, value]);
+
+  const y = Number(view.slice(0, 4));
+  const m = Number(view.slice(5, 7));
+  const lead = new Date(y, m - 1, 1).getDay();
+  const total = new Date(y, m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(null);
+  for (let d = 1; d <= total; d++) cells.push(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  const shift = (n) => {
+    const dt = new Date(y, m - 1 + n, 1);
+    setView(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  return (
+    <div className={"ml-pick" + (open ? " open" : "")} ref={ref}>
+      <button type="button" className="ml-pickbtn" onClick={() => setOpen(!open)}>
+        <span className="ml-picklabel ml-num">{value ? fmtDate(value) : "Pick a date"}</span>
+        <span className="ml-chev" />
+      </button>
+      {open && (
+        <div className="ml-cal">
+          <div className="ml-calhead">
+            <button type="button" className="ml-calnav" onClick={() => shift(-1)} aria-label="Previous month">‹</button>
+            <span className="ml-calmon">{MON[m - 1]} {y}</span>
+            <button type="button" className="ml-calnav" onClick={() => shift(1)} aria-label="Next month">›</button>
+          </div>
+          <div className="ml-calgrid">
+            {DOW.map((d, i) => <div className="ml-caldow" key={i}>{d}</div>)}
+            {cells.map((iso, i) => iso === null
+              ? <span className="ml-calday mute" key={`x${i}`} />
+              : (
+                <button type="button" key={iso}
+                  className={"ml-calday" + (iso === value ? " on" : "") + (iso === TODAY() ? " today" : "")}
+                  onClick={() => { onChange(iso); setOpen(false); }}>
+                  {Number(iso.slice(8, 10))}
+                </button>
+              ))}
+          </div>
+          <div className="ml-calfoot">
+            <button type="button" className="ml-btn ghost sm" onClick={() => { onChange(TODAY()); setOpen(false); }}>Today</button>
+            <span className="ml-sub ml-num">{value ? fmtDate(value) : ""}</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -756,31 +1033,32 @@ function LedgerRow({ title, meta, debit, credit, invest, onDelete }) {
       <div className="ml-lcell ml-debit" data-l="Debit">{debit ? fmt(debit) : ""}</div>
       <div className="ml-lcell ml-credit" data-l="Credit">{credit ? fmt(credit) : ""}</div>
       <div className="ml-lcell ml-invest" data-l="Invested">{invest ? fmt(invest) : ""}</div>
-      {onDelete ? <button className="ml-x" onClick={onDelete} title="Delete entry">×</button> : <span />}
+      {onDelete ? <button className="ml-x" onClick={onDelete} title="Delete entry"><TrashIcon /></button> : <span />}
     </div>
   );
 }
 
 /* ---------- OVERVIEW ---------- */
 function Overview({ A, data, posted, setTab }) {
+  const [logOpen, setLogOpen] = useState(false);
   const max = Math.max(1, ...A.months.map((m) => Math.max(m.spend, m.invest)));
   const catMax = Math.max(1, ...A.catRows.map((c) => c[1]));
   const recent = [...A.flows, ...data.savingsTx.filter((t) => ["deposit", "interest", "settlement"].includes(t.type))]
     .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
 
   return (
-    <>
-      <div className="ml-stats">
+    <div className="ml-page">
+      <StatRow>
         <Stat label="Spent this month" value={fmt0(A.spentMonth)} note="your share only" tone="debit" />
         <Stat label="Invested" value={fmt0(A.investedMonth)} note="never counted as expense" tone="stamp" />
         <Stat label="Interest earned" value={fmt(A.interestMonth)} note={`${fmt(A.interestAll)} lifetime`} tone="credit" />
         <Stat label="Save rate" value={A.saveRate === null ? "—" : `${A.saveRate}%`} note={A.income ? `on ${fmt0(A.income)} income` : "set income in Settings"} />
-      </div>
+      </StatRow>
 
-      <div className="ml-wallet">
+      <div className="ml-wallet ml-w6">
         {data.accounts.map((a, i) => (
           <Face key={a.id} tone={inkFor(ACC_INKS, i)} title={a.name} sub={a.type}
-            rightLabel="Balance" rightValue={fmt0(a.balance)} onClick={() => setTab("savings")} />
+            rightLabel="Balance" rightValue={fmt0(a.balance)} onClick={() => setTab("accounts")} />
         ))}
         {A.cardRows.map((c, i) => (
           <Face key={c.id} chip tone={inkFor(CARD_INKS, i)} title={c.name}
@@ -791,7 +1069,7 @@ function Overview({ A, data, posted, setTab }) {
       </div>
 
       {A.tips.length > 0 && (
-        <div className="ml-card">
+        <div className="ml-card ml-w6">
           <div className="ml-eyebrow">What to do next</div>
           {A.tips.map(([t, body], i) => (
             <div className="ml-tip" key={i}><b>{t}</b><p>{body}</p></div>
@@ -799,8 +1077,7 @@ function Overview({ A, data, posted, setTab }) {
         </div>
       )}
 
-      <div className="ml-grid ml-2">
-        <div className="ml-card">
+        <div className="ml-card ml-w3">
           <div className="ml-eyebrow">Six months — spending vs investing</div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 150, marginTop: 10 }}>
             {A.months.map((m) => (
@@ -819,7 +1096,7 @@ function Overview({ A, data, posted, setTab }) {
           </div>
         </div>
 
-        <div className="ml-card">
+        <div className="ml-card ml-w3">
           <div className="ml-eyebrow">Where this month went</div>
           {A.catRows.length === 0 ? (
             <div className="ml-empty">No categorised spending yet this month. Log one on the Cards tab.</div>
@@ -835,21 +1112,19 @@ function Overview({ A, data, posted, setTab }) {
             ))
           )}
         </div>
-      </div>
 
-      <div className="ml-grid ml-3">
-        <div className="ml-card">
+        <div className="ml-card ml-w2">
           <div className="ml-eyebrow">Assets</div>
-          <div className="ml-between" style={{ fontSize: 13, marginTop: 4 }}><span>Savings & cash</span><span className="ml-num ml-credit">{fmt0(A.savingsTotal)}</span></div>
-          <div className="ml-between" style={{ fontSize: 13, marginTop: 6 }}><span>Friends' EMI due back</span><span className="ml-num ml-credit">{fmt0(A.receivable)}</span></div>
-          <div className="ml-between" style={{ fontSize: 13, marginTop: 6 }}><span>Shared bills to settle</span><span className="ml-num ml-credit">{fmt0(A.sharedPending)}</span></div>
+          <div className="ml-between" style={{ fontSize: 13, marginTop: 4 }}><span>Savings & cash</span><span className="ml-num ml-credit">{mask(fmt0(A.savingsTotal))}</span></div>
+          <div className="ml-between" style={{ fontSize: 13, marginTop: 6 }}><span>Friends' EMI due back</span><span className="ml-num ml-credit">{mask(fmt0(A.receivable))}</span></div>
+          <div className="ml-between" style={{ fontSize: 13, marginTop: 6 }}><span>Shared bills to settle</span><span className="ml-num ml-credit">{mask(fmt0(A.sharedPending))}</span></div>
         </div>
-        <div className="ml-card">
+        <div className="ml-card ml-w2">
           <div className="ml-eyebrow">Liabilities</div>
-          <div className="ml-between" style={{ fontSize: 13, marginTop: 4 }}><span>Card outstanding</span><span className="ml-num ml-debit">{fmt0(A.cardOutstanding)}</span></div>
-          <div className="ml-between" style={{ fontSize: 13, marginTop: 6 }}><span>Loan instalments left</span><span className="ml-num ml-debit">{fmt0(A.loanRemaining)}</span></div>
+          <div className="ml-between" style={{ fontSize: 13, marginTop: 4 }}><span>Card outstanding</span><span className="ml-num ml-debit">{mask(fmt0(A.cardOutstanding))}</span></div>
+          <div className="ml-between" style={{ fontSize: 13, marginTop: 6 }}><span>Loan instalments left</span><span className="ml-num ml-debit">{mask(fmt0(A.loanRemaining))}</span></div>
         </div>
-        <div className="ml-card">
+        <div className="ml-card ml-w2">
           <div className="ml-eyebrow">Next auto-payments</div>
           {A.upcoming.length === 0 ? <div className="ml-sub" style={{ marginTop: 4 }}>Nothing scheduled.</div> :
             A.upcoming.map((r) => (
@@ -859,10 +1134,21 @@ function Overview({ A, data, posted, setTab }) {
               </div>
             ))}
         </div>
+
+      <div className="ml-card ml-w6">
+        <div className="ml-between">
+          <div>
+            <div className="ml-eyebrow">Recent entries</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>
+              {recent.length === 0 ? "Nothing logged yet." : `${recent.length} most recent across every account and card.`}
+            </div>
+          </div>
+          <button className="ml-btn sm" onClick={() => setLogOpen(true)}>View</button>
+        </div>
       </div>
 
-      <div className="ml-card">
-        <div className="ml-eyebrow">Recent entries</div>
+      {logOpen && (
+        <Modal title="Recent entries" subtitle="Newest first, from every source" onClose={() => setLogOpen(false)}>
         <LedgerHead />
         {recent.length === 0 ? <div className="ml-empty" style={{ marginTop: 12 }}>The ledger is empty. Load a sample month from Settings to see how it reads.</div> :
           recent.map((f) => {
@@ -879,18 +1165,51 @@ function Overview({ A, data, posted, setTab }) {
               />
             );
           })}
-      </div>
-    </>
+        </Modal>
+      )}
+    </div>
   );
 }
 
 /* ---------- SAVINGS ---------- */
 function Savings({ A, data, mutate, say, posted, effRate }) {
   const [f, setF] = useState({ name: "", type: "", interest: true, balance: "" });
-  const [mv, setMv] = useState({ accountId: "", dir: "deposit", amount: "", category: "Transfer", kind: "Income", note: "" });
+  const [mv, setMv] = useState({
+    mode: "spend", accountId: "", toId: "", amount: "",
+    category: "Groceries", kind: "Settlement", date: TODAY(), note: "",
+  });
   const [open, setOpen] = useState(false);
   const [focus, setFocus] = useState(null);
+  const [edit, setEdit] = useState(null);
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [ef, setEf] = useState({ name: "", type: "", balance: "" });
   const todayPosted = posted.reduce((s, p) => s + p.amount, 0);
+
+  const openEdit = (a) => {
+    setEdit(edit === a.id ? null : a.id);
+    setEf({ name: a.name, type: a.type, balance: String(a.balance) });
+  };
+  const saveEdit = (a) => {
+    if (!ef.name.trim()) return say("The account needs a name.");
+    const want = num(ef.balance);
+    mutate((d) => {
+      const x = d.accounts.find((z) => z.id === a.id);
+      x.name = ef.name.trim();
+      x.type = ef.type.trim() || "Savings";
+      const diff = r2(want - x.balance);
+      if (diff !== 0) {
+        x.balance = want;
+        /* a correction, logged so the statement still adds up */
+        d.savingsTx.push({
+          id: uid(), date: TODAY(), accountId: x.id, type: "adjustment",
+          amount: Math.abs(diff), up: diff > 0, category: "Transfer",
+          note: `Balance corrected to ${fmt(want)}`,
+        });
+      }
+    });
+    setEdit(null);
+    say("Account updated.");
+  };
 
   const toggleInterest = (a) => {
     mutate((d) => {
@@ -915,25 +1234,57 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
     say("Account opened.");
   };
 
-  const move = () => {
-    const acc = mv.accountId || (data.accounts[0] || {}).id;
-    if (!acc) return say("Add an account first.");
-    if (num(mv.amount) <= 0) return say("Enter an amount above zero.");
-    const isIn = mv.dir === "deposit";
+  const post = () => {
+    const from = mv.accountId || (data.accounts[0] || {}).id;
+    if (!from) return say("Add an account first.");
+    const amt = num(mv.amount);
+    if (!(amt > 0)) return say("Enter an amount above zero.");
+
+    if (mv.mode === "transfer") {
+      const to = mv.toId || (data.accounts.find((a) => a.id !== from) || {}).id;
+      if (!to) return say("You need a second account to transfer into.");
+      if (to === from) return say("Pick two different accounts.");
+      mutate((d) => {
+        const pairId = uid();
+        const a = d.accounts.find((x) => x.id === from);
+        const b = d.accounts.find((x) => x.id === to);
+        a.balance = r2(a.balance - amt);
+        b.balance = r2(b.balance + amt);
+        const note = mv.note.trim() || `${a.name} → ${b.name}`;
+        d.savingsTx.push({ id: uid(), pairId, date: mv.date, accountId: from, type: "transfer-out", amount: amt, category: "Transfer", note });
+        d.savingsTx.push({ id: uid(), pairId, date: mv.date, accountId: to, type: "transfer-in", amount: amt, category: "Transfer", note });
+      });
+      setMv({ ...mv, amount: "", note: "" });
+      setEntryOpen(false);
+      return say("Transferred between your accounts — not an expense either side.");
+    }
+
+    if (mv.mode === "in") {
+      mutate((d) => {
+        const a = d.accounts.find((x) => x.id === from);
+        a.balance = r2(a.balance + amt);
+        d.savingsTx.push({
+          id: uid(), date: mv.date, accountId: from,
+          type: mv.kind === "Settlement" ? "settlement" : "deposit",
+          amount: amt, category: mv.kind, note: mv.note.trim() || mv.kind,
+        });
+      });
+      setMv({ ...mv, amount: "", note: "" });
+      setEntryOpen(false);
+      return say("Added to the balance — not counted as income.");
+    }
+
     mutate((d) => {
-      const a = d.accounts.find((x) => x.id === acc);
-      a.balance = r2(a.balance + (isIn ? num(mv.amount) : -num(mv.amount)));
+      const a = d.accounts.find((x) => x.id === from);
+      a.balance = r2(a.balance - amt);
       d.savingsTx.push({
-        id: uid(), date: TODAY(), accountId: acc,
-        type: isIn ? (mv.kind === "Settlement" ? "settlement" : "deposit") : "withdrawal",
-        amount: num(mv.amount),
-        category: isIn ? mv.kind : mv.category,
-        note: mv.note.trim() || (isIn ? mv.kind : "Withdrawal"),
+        id: uid(), date: mv.date, accountId: from, type: "withdrawal",
+        amount: amt, category: mv.category, note: mv.note.trim() || mv.category,
       });
     });
     setMv({ ...mv, amount: "", note: "" });
-    say(!isIn ? "Withdrawal posted." : mv.kind === "Income" ? "Income posted."
-      : `Added to the balance — not counted as income.`);
+    setEntryOpen(false);
+    say(mv.category === "Investment" ? "Logged as an investment — kept out of expenses." : "Expense logged.");
   };
 
   const txs = [...data.savingsTx]
@@ -943,12 +1294,12 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
 
   return (
     <>
-      <div className="ml-stats">
+      <StatRow>
         <Stat label="Total balance" value={fmt0(A.savingsTotal)} note={`${data.accounts.length} accounts`} />
         <Stat label="Interest this month" value={fmt(A.interestMonth)} tone="credit" note={`${fmt(A.interestAll)} lifetime`} />
-        <Stat label="RBI repo rate" value={`${effRate.toFixed(2)}%`} note="set in Settings" />
-        <Stat label="Earning today" value={fmt(data.accounts.filter((a) => a.earningInterest).reduce((s, a) => s + (a.balance * effRate) / 100 / 365, 0))} note="one day at the repo rate" />
-      </div>
+        <Stat label="RBI repo rate" value={`${effRate.toFixed(2)}% p.a.`} note={`${(effRate / 365).toFixed(5)}% a day, compounded`} />
+        <Stat label="Earning today" value={fmt(data.accounts.filter((a) => a.earningInterest).reduce((s, a) => s + (a.balance * effRate) / 100 / 365, 0))} note="one day's interest at today's balances" />
+      </StatRow>
 
       {todayPosted > 0 && (
         <div style={{ marginTop: 18, textAlign: "center" }}>
@@ -964,7 +1315,7 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
         {data.accounts.map((a, i) => (
           <Face key={a.id} tone={inkFor(ACC_INKS, i)}
             title={a.name}
-            sub={`${a.type}${a.earningInterest ? ` · earns ${effRate.toFixed(2)}%` : " · no interest"}`}
+            sub={`${a.type}${a.earningInterest ? ` · ${effRate.toFixed(2)}% p.a.` : " · no interest"}`}
             rightLabel="Current balance" rightValue={fmt0(a.balance)}
             active={focus === a.id}
             onClick={() => setFocus(focus === a.id ? null : a.id)} />
@@ -974,11 +1325,11 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
       <div className="ml-card">
         <div className="ml-between">
           <div className="ml-eyebrow">Accounts</div>
-          <button className="ml-btn sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Add account"}</button>
+          <button className="ml-btn sm" onClick={() => setOpen(true)}>Add account</button>
         </div>
 
         {open && (
-          <>
+          <Modal title="Open an account" onClose={() => setOpen(false)}>
             <div className="ml-form" style={{ marginTop: 12 }}>
               <Field label="Name of the account">
                 <input className="ml-in" value={f.name} placeholder="e.g. Travel fund" onChange={(e) => setF({ ...f, name: e.target.value })} />
@@ -998,28 +1349,30 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
             </div>
             <div className="ml-flex" style={{ marginTop: 12 }}>
               <button className="ml-btn" onClick={addAccount}>Open account</button>
-              <span className="ml-sub">Interest-earning accounts all use the RBI repo rate set in Settings.</span>
             </div>
-            <hr className="ml-hr" />
-          </>
+            <div className="ml-sub" style={{ marginTop: 10 }}>
+              Interest-earning accounts all use the RBI repo rate set in Settings — an annual rate, compounded daily.
+            </div>
+          </Modal>
         )}
 
-        <div style={{ marginTop: open ? 0 : 12 }}>
+        <div style={{ marginTop: 12 }}>
           {data.accounts.map((a) => (
             <div key={a.id} style={{ padding: "11px 0", borderBottom: "1px solid var(--rule-soft)" }}>
               <div className="ml-between">
                 <div>
                   <div style={{ fontWeight: 600 }}>{a.name}</div>
                   <div className="ml-sub" style={{ marginTop: 3 }}>
-                    {a.type} · <span className={"ml-pill " + (a.earningInterest ? "on" : "off")}>{a.earningInterest ? `Earns ${effRate.toFixed(2)}% daily` : "No interest"}</span>
+                    {a.type} · <span className={"ml-pill " + (a.earningInterest ? "on" : "off")}>{a.earningInterest ? `Earns ${effRate.toFixed(2)}% p.a.` : "No interest"}</span>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div className="ml-num" style={{ fontSize: 16, fontWeight: 600 }}>{fmt(a.balance)}</div>
-                  <div className="ml-sub ml-num">{a.earningInterest ? `+${fmt(a.interestEarned || 0)} interest` : "—"}</div>
+                  <div className="ml-num" style={{ fontSize: 16, fontWeight: 600 }}>{mask(fmt(a.balance))}</div>
+                  <div className="ml-sub ml-num">{a.earningInterest ? mask(`+${fmt(a.interestEarned || 0)} interest`) : "—"}</div>
                 </div>
               </div>
               <div className="ml-flex" style={{ marginTop: 8 }}>
+                <button className="ml-btn ghost sm" onClick={() => openEdit(a)}>{edit === a.id ? "Cancel" : "Edit"}</button>
                 <button className="ml-btn ghost sm" onClick={() => toggleInterest(a)}>
                   {a.earningInterest ? "Stop earning interest" : "Start earning interest"}
                 </button>
@@ -1029,51 +1382,96 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
                   say("Account removed.");
                 }}>Remove account</button>
               </div>
+
+              {edit === a.id && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--rule-soft)" }}>
+                  <div className="ml-form">
+                    <Field label="Name of the account">
+                      <input className="ml-in" value={ef.name} onChange={(e) => setEf({ ...ef, name: e.target.value })} />
+                    </Field>
+                    <Field label="Type">
+                      <input className="ml-in" value={ef.type} onChange={(e) => setEf({ ...ef, type: e.target.value })} />
+                    </Field>
+                    <Field label="Balance" span>
+                      <input className="ml-in ml-num" inputMode="decimal" value={ef.balance}
+                        onChange={(e) => setEf({ ...ef, balance: e.target.value })} />
+                    </Field>
+                  </div>
+                  <div className="ml-flex" style={{ marginTop: 10 }}>
+                    <button className="ml-btn sm" onClick={() => saveEdit(a)}>Save changes</button>
+                    <span className="ml-sub">Changing the balance posts a correction entry, so the statement still adds up.</span>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </div>
 
       <div className="ml-card">
-        <div className="ml-eyebrow">Move money</div>
+        <div className="ml-between">
+          <div>
+            <div className="ml-eyebrow">Log an entry</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>An expense, a transfer between your own accounts, or money coming in.</div>
+          </div>
+          <button className="ml-btn sm" onClick={() => setEntryOpen(true)}>New entry</button>
+        </div>
+      </div>
+
+      {entryOpen && (
+        <Modal title="Log an entry" onClose={() => setEntryOpen(false)}>
+        <div className="ml-flex" style={{ margin: "10px 0 14px" }}>
+          <div className="ml-seg">
+            <button data-on={mv.mode === "spend" ? "1" : "0"} onClick={() => setMv({ ...mv, mode: "spend" })}>Expense</button>
+            <button data-on={mv.mode === "transfer" ? "1" : "0"} onClick={() => setMv({ ...mv, mode: "transfer" })}>Transfer</button>
+            <button data-on={mv.mode === "in" ? "1" : "0"} onClick={() => setMv({ ...mv, mode: "in" })}>Money in</button>
+          </div>
+        </div>
         <div className="ml-form">
-          <Field label="Account">
-            <select className="ml-in" value={mv.accountId || (data.accounts[0] || {}).id} onChange={(e) => setMv({ ...mv, accountId: e.target.value })}>
-              {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+          <Field label={mv.mode === "transfer" ? "From account" : "Account"}>
+            <Pick value={mv.accountId || (data.accounts[0] || {}).id} onChange={(v) => setMv({ ...mv, accountId: v })}
+              options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
           </Field>
-          <Field label="Direction">
-            <div className="ml-seg">
-              <button data-on={mv.dir === "deposit" ? "1" : "0"} onClick={() => setMv({ ...mv, dir: "deposit" })}>In</button>
-              <button data-on={mv.dir === "withdrawal" ? "1" : "0"} onClick={() => setMv({ ...mv, dir: "withdrawal" })}>Out</button>
-            </div>
-          </Field>
+          {mv.mode === "transfer" && (
+            <Field label="To account">
+              <Pick
+                value={mv.toId || (data.accounts.find((a) => a.id !== (mv.accountId || (data.accounts[0] || {}).id)) || {}).id || ""}
+                onChange={(v) => setMv({ ...mv, toId: v })} options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
+            </Field>
+          )}
           <Field label="Amount">
             <input className="ml-in ml-num" inputMode="decimal" value={mv.amount} placeholder="0" onChange={(e) => setMv({ ...mv, amount: e.target.value })} />
           </Field>
-          {mv.dir === "deposit" ? (
-            <Field label="What kind of money is this">
-              <select className="ml-in" value={mv.kind} onChange={(e) => setMv({ ...mv, kind: e.target.value })}>
-                {DEPOSIT_KINDS.map(([k, hint]) => <option key={k} value={k}>{k} — {hint}</option>)}
-              </select>
-            </Field>
-          ) : (
+          {mv.mode === "spend" && (
             <Field label="Category">
-              <select className="ml-in" value={mv.category} onChange={(e) => setMv({ ...mv, category: e.target.value })}>
-                {data.config.categories.map((c) => <option key={c} value={c}>{c}{NON_EXPENSE.includes(c) ? " (not an expense)" : ""}</option>)}
-              </select>
+              <Pick value={mv.category} onChange={(v) => setMv({ ...mv, category: v })} options={data.config.categories.map((c) => ({ value: c, label: c, hint: isExcluded(data.config, c) ? "tracked, not counted as spending" : undefined }))} />
             </Field>
           )}
+          {mv.mode === "in" && (
+            <Field label="What kind of money is this">
+              <Pick value={mv.kind} onChange={(v) => setMv({ ...mv, kind: v })}
+                options={DEPOSIT_KINDS.map(([k, hint]) => ({ value: k, label: k, hint }))} />
+            </Field>
+          )}
+          <Field label="Date">
+            <DateField value={mv.date} onChange={(v) => setMv({ ...mv, date: v })} />
+          </Field>
           <Field label="Note" span>
             <input className="ml-in" value={mv.note} placeholder="What was this for?" onChange={(e) => setMv({ ...mv, note: e.target.value })} />
           </Field>
         </div>
         <div className="ml-flex" style={{ marginTop: 12 }}>
-          <button className="ml-btn" onClick={move}>Post entry</button>
-          {mv.dir === "deposit" && mv.kind !== "Income" &&
-            <span className="ml-sub">Raises the balance, stays out of income and out of expenses.</span>}
+          <button className="ml-btn" onClick={post}>
+            {mv.mode === "spend" ? "Log expense" : mv.mode === "transfer" ? "Move it" : "Add to balance"}
+          </button>
+          <span className="ml-sub">
+            {mv.mode === "spend" ? "Leaves the account and counts against your spending, unless the category says otherwise."
+              : mv.mode === "transfer" ? "Both sides post at once. Your own money moving around is never an expense."
+              : "Raises the balance and stays out of both income and expenses. Income is the figure in Settings, not an entry here."}
+          </span>
         </div>
-      </div>
+        </Modal>
+      )}
 
       <div className="ml-card">
         <div className="ml-filter">
@@ -1084,19 +1482,25 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
         <LedgerHead />
         {txs.length === 0 ? <div className="ml-empty" style={{ marginTop: 12 }}>No entries yet.</div> :
           txs.map((t) => {
-            const isIn = ["deposit", "interest", "settlement"].includes(t.type);
+            const isIn = ["deposit", "interest", "settlement", "transfer-in"].includes(t.type) || (t.type === "adjustment" && t.up);
             const isInv = t.category === "Investment";
             return (
               <LedgerRow key={t.id}
                 title={t.note}
-                meta={`${fmtDate(t.date)} · ${A.accOf(t.accountId)} · ${t.type === "interest" ? "Interest" : t.category}`}
+                meta={`${fmtDate(t.date)} · ${A.accOf(t.accountId)} · ${t.type === "interest" ? "Interest" : t.type === "adjustment" ? "Correction" : t.type === "transfer-out" ? "Transfer out" : t.type === "transfer-in" ? "Transfer in" : t.category}`}
                 debit={!isIn && !isInv ? t.amount : 0}
                 credit={isIn ? t.amount : 0}
                 invest={isInv ? t.amount : 0}
                 onDelete={t.type === "interest" ? null : () => mutate((d) => {
-                  const acc = d.accounts.find((a) => a.id === t.accountId);
-                  if (acc) acc.balance = r2(acc.balance + (isIn ? -num(t.amount) : num(t.amount)));
-                  d.savingsTx = d.savingsTx.filter((x) => x.id !== t.id);
+                  const legs = t.pairId ? d.savingsTx.filter((x) => x.pairId === t.pairId) : [t];
+                  legs.forEach((leg) => {
+                    const acc = d.accounts.find((a) => a.id === leg.accountId);
+                    if (!acc) return;
+                    const legIn = ["deposit", "interest", "settlement", "transfer-in"].includes(leg.type) || (leg.type === "adjustment" && leg.up);
+                    acc.balance = r2(acc.balance + (legIn ? -num(leg.amount) : num(leg.amount)));
+                  });
+                  const ids = new Set(legs.map((x) => x.id));
+                  d.savingsTx = d.savingsTx.filter((x) => !ids.has(x.id));
                 })}
               />
             );
@@ -1113,6 +1517,25 @@ function Cards({ A, data, mutate, say }) {
   const [nc, setNc] = useState({ name: "", limit: "" });
   const [showCard, setShowCard] = useState(false);
   const [focus, setFocus] = useState(null);
+  const [edit, setEdit] = useState(null);
+  const [spendOpen, setSpendOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [ec, setEc] = useState({ name: "", limit: "" });
+
+  const openEdit = (c) => {
+    setEdit(edit === c.id ? null : c.id);
+    setEc({ name: c.name, limit: String(c.limit || "") });
+  };
+  const saveEdit = (c) => {
+    if (!ec.name.trim()) return say("The card needs a name.");
+    mutate((d) => {
+      const x = d.cards.find((z) => z.id === c.id);
+      x.name = ec.name.trim();
+      x.limit = num(ec.limit);
+    });
+    setEdit(null);
+    say("Card updated.");
+  };
 
   const log = () => {
     const card = s.cardId || (data.cards[0] || {}).id;
@@ -1128,6 +1551,7 @@ function Cards({ A, data, mutate, say }) {
     });
     const back = s.shared ? Math.min(num(s.shareAmount), num(s.amount)) : 0;
     setS({ ...s, amount: "", note: "", shareAmount: "" });
+    setSpendOpen(false);
     say(s.category === "Investment" ? "Logged as an investment — kept out of expenses."
       : back > 0 ? `Logged. ${fmt0(back)} sits as owed to you, not as your spending.` : "Spend logged.");
   };
@@ -1146,6 +1570,7 @@ function Cards({ A, data, mutate, say }) {
       });
     });
     setPay({ ...pay, amount: "" });
+    setPayOpen(false);
     say("Card payment posted.");
   };
 
@@ -1160,8 +1585,8 @@ function Cards({ A, data, mutate, say }) {
         {A.cardRows.map((c, i) => (
           <Face key={c.id} chip tone={inkFor(CARD_INKS, i)}
             title={c.name}
-            sub={c.limit ? `${Math.round((c.outstanding / Math.max(1, c.limit)) * 100)}% of limit used` : "No limit set"}
-            pct={c.limit ? (c.outstanding / c.limit) * 100 : 0}
+            sub={c.limit ? mask(`${fmt0(c.available)} available of ${fmt0(c.limit)}`) : "No limit set"}
+            pct={c.limit ? (c.used / c.limit) * 100 : 0}
             leftLabel="Credit limit" leftValue={fmt0(c.limit || 0)}
             rightLabel="Outstanding" rightValue={fmt0(c.outstanding)}
             active={focus === c.id}
@@ -1175,35 +1600,72 @@ function Cards({ A, data, mutate, say }) {
           <div key={c.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--rule-soft)" }}>
             <div className="ml-between">
               <span style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</span>
-              <span className="ml-num" style={{ color: "var(--debit)", fontWeight: 600 }}>{fmt0(c.outstanding)}</span>
+              <span style={{ textAlign: "right" }}>
+                <span className="ml-num" style={{ color: "var(--debit)", fontWeight: 600 }}>{mask(fmt0(c.outstanding))}</span>
+                <span className="ml-sub" style={{ display: "block" }}>payable now</span>
+              </span>
             </div>
             <div className="ml-flex" style={{ marginTop: 6, fontSize: 11.5, color: "var(--soft)", justifyContent: "space-between" }}>
-              <span>Yours {fmt0(c.own)}</span>
-              <span>Friends' EMI {fmt0(c.friends)}</span>
-              <span>Paid {fmt0(c.paid)}</span>
+              <span>Yours {mask(fmt0(c.own))}</span>
+              <span>EMI due {mask(fmt0(c.emiDue))}</span>
+              <span>EMI blocking {mask(fmt0(c.blocked))}</span>
+              <span>Paid {mask(fmt0(c.paid))}</span>
+              <span>Available {mask(fmt0(c.available))}</span>
             </div>
+            <div className="ml-flex" style={{ marginTop: 8 }}>
+              <button className="ml-btn ghost sm" onClick={() => openEdit(c)}>{edit === c.id ? "Cancel" : "Edit"}</button>
+              {data.cards.length > 1 && (
+                <button className="ml-btn ghost sm" onClick={() => {
+                  mutate((d) => { d.cards = d.cards.filter((z) => z.id !== c.id); });
+                  say("Card removed. Its entries stay in the ledger.");
+                }}>Remove</button>
+              )}
+            </div>
+            {edit === c.id && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--rule-soft)" }}>
+                <div className="ml-form">
+                  <Field label="Card name">
+                    <input className="ml-in" value={ec.name} onChange={(e) => setEc({ ...ec, name: e.target.value })} />
+                  </Field>
+                  <Field label="Credit limit">
+                    <input className="ml-in ml-num" inputMode="decimal" value={ec.limit}
+                      onChange={(e) => setEc({ ...ec, limit: e.target.value })} />
+                  </Field>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <button className="ml-btn sm" onClick={() => saveEdit(c)}>Save changes</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
       <div className="ml-card">
-        <div className="ml-eyebrow">Log a spend</div>
+        <div className="ml-between">
+          <div>
+            <div className="ml-eyebrow">Log a spend</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>Anything charged to a card, including bills you split with someone.</div>
+          </div>
+          <button className="ml-btn sm" onClick={() => setSpendOpen(true)}>New spend</button>
+        </div>
+      </div>
+
+      {spendOpen && (
+        <Modal title="Log a spend" onClose={() => setSpendOpen(false)}>
         <div className="ml-form">
           <Field label="Card">
-            <select className="ml-in" value={s.cardId || (data.cards[0] || {}).id} onChange={(e) => setS({ ...s, cardId: e.target.value })}>
-              {data.cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Pick value={s.cardId || (data.cards[0] || {}).id} onChange={(v) => setS({ ...s, cardId: v })}
+              options={data.cards.map((c) => ({ value: c.id, label: c.name }))} />
           </Field>
           <Field label="Category">
-            <select className="ml-in" value={s.category} onChange={(e) => setS({ ...s, category: e.target.value })}>
-              {data.config.categories.map((c) => <option key={c} value={c}>{c}{NON_EXPENSE.includes(c) ? " (not an expense)" : ""}</option>)}
-            </select>
+            <Pick value={s.category} onChange={(v) => setS({ ...s, category: v })} options={data.config.categories.map((c) => ({ value: c, label: c, hint: isExcluded(data.config, c) ? "tracked, not counted as spending" : undefined }))} />
           </Field>
           <Field label="Amount">
             <input className="ml-in ml-num" inputMode="decimal" value={s.amount} placeholder="0" onChange={(e) => setS({ ...s, amount: e.target.value })} />
           </Field>
           <Field label="Date">
-            <input className="ml-in ml-num" type="date" value={s.date} onChange={(e) => setS({ ...s, date: e.target.value })} />
+            <DateField value={s.date} onChange={(v) => setS({ ...s, date: v })} />
           </Field>
           <Field label="Note" span>
             <input className="ml-in" value={s.note} placeholder="What did you buy?" onChange={(e) => setS({ ...s, note: e.target.value })} />
@@ -1233,20 +1695,29 @@ function Cards({ A, data, mutate, say }) {
           {s.shared && num(s.shareAmount) > 0 && num(s.amount) > 0 &&
             <span className="ml-sub">Your share: {fmt0(Math.max(0, num(s.amount) - num(s.shareAmount)))}. The rest becomes a settlement to collect.</span>}
         </div>
-      </div>
+        </Modal>
+      )}
 
       <div className="ml-card">
-        <div className="ml-eyebrow">Pay a card bill</div>
+        <div className="ml-between">
+          <div>
+            <div className="ml-eyebrow">Pay a card bill</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>Moves money from an account and reduces what the card owes.</div>
+          </div>
+          <button className="ml-btn sm" onClick={() => setPayOpen(true)}>Pay bill</button>
+        </div>
+      </div>
+
+      {payOpen && (
+        <Modal title="Pay a card bill" onClose={() => setPayOpen(false)}>
         <div className="ml-form">
           <Field label="Card">
-            <select className="ml-in" value={pay.cardId || (data.cards[0] || {}).id} onChange={(e) => setPay({ ...pay, cardId: e.target.value })}>
-              {data.cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Pick value={pay.cardId || (data.cards[0] || {}).id} onChange={(v) => setPay({ ...pay, cardId: v })}
+              options={data.cards.map((c) => ({ value: c.id, label: c.name }))} />
           </Field>
           <Field label="From account">
-            <select className="ml-in" value={pay.accountId || (data.accounts[0] || {}).id} onChange={(e) => setPay({ ...pay, accountId: e.target.value })}>
-              {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <Pick value={pay.accountId || (data.accounts[0] || {}).id} onChange={(v) => setPay({ ...pay, accountId: v })}
+              options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
           </Field>
           <Field label="Amount" span>
             <input className="ml-in ml-num" inputMode="decimal" value={pay.amount} placeholder="0" onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
@@ -1256,16 +1727,17 @@ function Cards({ A, data, mutate, say }) {
           <button className="ml-btn" onClick={payCard}>Pay bill</button>
           <span className="ml-sub">Reduces the account balance and the card outstanding. Not counted twice as an expense.</span>
         </div>
-      </div>
+        </Modal>
+      )}
 
       <div className="ml-card">
         <div className="ml-between">
           <div className="ml-eyebrow">Add a card</div>
-          <button className="ml-btn sm ghost" onClick={() => setShowCard(!showCard)}>{showCard ? "Close" : "New card"}</button>
+          <button className="ml-btn sm ghost" onClick={() => setShowCard(true)}>New card</button>
         </div>
         {showCard && (
-          <>
-            <div className="ml-form" style={{ marginTop: 12 }}>
+          <Modal title="Add a card" onClose={() => setShowCard(false)}>
+            <div className="ml-form">
               <Field label="Card name"><input className="ml-in" value={nc.name} placeholder="e.g. Cashback card" onChange={(e) => setNc({ ...nc, name: e.target.value })} /></Field>
               <Field label="Credit limit"><input className="ml-in ml-num" inputMode="decimal" value={nc.limit} placeholder="0" onChange={(e) => setNc({ ...nc, limit: e.target.value })} /></Field>
             </div>
@@ -1276,7 +1748,7 @@ function Cards({ A, data, mutate, say }) {
                 setNc({ name: "", limit: "" }); setShowCard(false); say("Card added.");
               }}>Add card</button>
             </div>
-          </>
+          </Modal>
         )}
       </div>
 
@@ -1306,6 +1778,58 @@ function Cards({ A, data, mutate, say }) {
 /* ---------- SHARED BILLS & SETTLEMENTS ---------- */
 function SharedPanel({ A, data, mutate, say }) {
   const [f, setF] = useState({});
+  const [open, setOpen] = useState(false);
+  const [nb, setNb] = useState({
+    note: "", friend: "", amount: "", share: "", date: TODAY(),
+    payFrom: "card", sourceId: "", category: "Groceries",
+  });
+
+  const addBill = () => {
+    const total = num(nb.amount), part = num(nb.share);
+    if (!nb.note.trim()) return say("What was the bill for?");
+    if (!(total > 0)) return say("Enter the total amount.");
+    if (!(part > 0) || part > total) return say("Their share must be above zero and no more than the total.");
+    const src = nb.sourceId || (nb.payFrom === "card" ? (data.cards[0] || {}).id : (data.accounts[0] || {}).id);
+    if (!src) return say(`Add a ${nb.payFrom === "card" ? "card" : "account"} first.`);
+    mutate((d) => {
+      const entry = {
+        id: uid(), date: nb.date, amount: total, category: nb.category,
+        note: nb.note.trim(), shareAmount: part, shareFriend: nb.friend.trim(),
+      };
+      if (nb.payFrom === "card") {
+        d.spends.push({ ...entry, cardId: src });
+      } else {
+        const acc = d.accounts.find((a) => a.id === src);
+        acc.balance = r2(acc.balance - total);
+        d.savingsTx.push({ ...entry, accountId: src, type: "withdrawal" });
+      }
+    });
+    setNb({ ...nb, note: "", amount: "", share: "" });
+    setOpen(false);
+    say(`Logged. ${fmt0(part)} is owed to you; ${fmt0(total - part)} counts as your spending.`);
+  };
+
+  const removeBill = (row) => {
+    mutate((d) => {
+      if (row.kind === "card") {
+        d.spends = d.spends.filter((x) => x.id !== row.id);
+      } else {
+        const t = d.savingsTx.find((x) => x.id === row.id);
+        if (t) {
+          const acc = d.accounts.find((a) => a.id === t.accountId);
+          if (acc) acc.balance = r2(acc.balance + num(t.amount));
+        }
+        d.savingsTx = d.savingsTx.filter((x) => x.id !== row.id);
+      }
+      /* settlements logged against it go too, with the balance put back */
+      d.savingsTx.filter((x) => x.type === "settlement" && x.flowId === row.id).forEach((x) => {
+        const acc = d.accounts.find((a) => a.id === x.accountId);
+        if (acc) acc.balance = r2(acc.balance - num(x.amount));
+      });
+      d.savingsTx = d.savingsTx.filter((x) => !(x.type === "settlement" && x.flowId === row.id));
+    });
+    say("Shared bill removed, along with anything settled against it.");
+  };
   const settlements = [...data.savingsTx.filter((t) => t.type === "settlement")].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
   const openRows = A.sharedRows.filter((x) => x.pending > 0);
   const doneRows = A.sharedRows.filter((x) => x.pending <= 0).slice(0, 5);
@@ -1329,17 +1853,79 @@ function SharedPanel({ A, data, mutate, say }) {
     say(`${fmt0(amount)} added to the balance — not income, not a spend.`);
   };
 
+  const sources = nb.payFrom === "card" ? data.cards : data.accounts;
+
   return (
+    <>
+      {A.sharedRows.length > 0 && (
+        <StatRow>
+          <Stat label="Waiting to come back" value={fmt0(A.sharedPending)} tone="credit"
+            note={`${openRows.length} open of ${A.sharedRows.length}`} />
+          <Stat label="Already settled" value={fmt0(A.settledIn)} note={`${fmt0(A.sharedBilled)} split in total`} />
+        </StatRow>
+      )}
+
     <div className="ml-card">
-      <div className="ml-eyebrow">Shared bills to collect</div>
-      <div className="ml-sub" style={{ marginTop: 4 }}>
-        Rent splits, household runs, anything you paid in full for someone else. Only your slice is counted as spending,
-        and what they pay back lands in your balance without ever being income.
+      <div className="ml-between">
+        <div>
+          <div className="ml-eyebrow">Shared bills to collect</div>
+          <div className="ml-sub" style={{ marginTop: 4 }}>
+            Rent splits, household runs, anything you paid in full for someone else. Only your slice is counted as
+            spending, and what they pay back lands in your balance without ever being income.
+          </div>
+        </div>
+        <button className="ml-btn sm" onClick={() => setOpen(true)}>Add bill</button>
       </div>
+
+      {open && (
+        <Modal title="Log a shared bill" onClose={() => setOpen(false)}>
+          <div className="ml-form">
+            <Field label="What was it for" span>
+              <input className="ml-in" value={nb.note} placeholder="e.g. Monthly household restock"
+                onChange={(e) => setNb({ ...nb, note: e.target.value })} />
+            </Field>
+            <Field label="Who owes you">
+              <input className="ml-in" value={nb.friend} placeholder="Name"
+                onChange={(e) => setNb({ ...nb, friend: e.target.value })} />
+            </Field>
+            <Field label="Category">
+              <Pick value={nb.category} onChange={(v) => setNb({ ...nb, category: v })} options={data.config.categories.map((c) => ({ value: c, label: c, hint: isExcluded(data.config, c) ? "tracked, not counted as spending" : undefined }))} />
+            </Field>
+            <Field label="Total you paid">
+              <input className="ml-in ml-num" inputMode="decimal" value={nb.amount} placeholder="0"
+                onChange={(e) => setNb({ ...nb, amount: e.target.value })} />
+            </Field>
+            <Field label="Their share">
+              <input className="ml-in ml-num" inputMode="decimal" value={nb.share} placeholder="0"
+                onChange={(e) => setNb({ ...nb, share: e.target.value })} />
+            </Field>
+            <Field label="Date">
+              <DateField value={nb.date} onChange={(v) => setNb({ ...nb, date: v })} />
+            </Field>
+            <Field label="Paid from">
+              <div className="ml-seg">
+                <button data-on={nb.payFrom === "card" ? "1" : "0"} onClick={() => setNb({ ...nb, payFrom: "card", sourceId: "" })}>Card</button>
+                <button data-on={nb.payFrom === "account" ? "1" : "0"} onClick={() => setNb({ ...nb, payFrom: "account", sourceId: "" })}>Account</button>
+              </div>
+            </Field>
+            <Field label={nb.payFrom === "card" ? "Which card" : "Which account"} span>
+              <Pick value={nb.sourceId || (sources[0] || {}).id} onChange={(v) => setNb({ ...nb, sourceId: v })}
+                options={sources.map((x) => ({ value: x.id, label: x.name }))} />
+            </Field>
+          </div>
+          <div className="ml-flex" style={{ marginTop: 12 }}>
+            <button className="ml-btn" onClick={addBill}>Log shared bill</button>
+          </div>
+          {num(nb.amount) > 0 && num(nb.share) > 0 &&
+            <div className="ml-sub" style={{ marginTop: 10 }}>
+              Your share: {fmt0(Math.max(0, num(nb.amount) - num(nb.share)))}. The full {fmt0(num(nb.amount))} leaves the {nb.payFrom}.
+            </div>}
+        </Modal>
+      )}
 
       {openRows.length === 0 ? (
         <div className="ml-empty" style={{ marginTop: 14 }}>
-          Nothing to collect. Mark a spend as shared on the Cards tab, or give an auto-payment someone's share.
+          Nothing to collect. Add a bill above, mark a spend as shared on the Cards tab, or give an auto-payment someone's share.
         </div>
       ) : openRows.map((x) => {
         const v = f[x.id] || {};
@@ -1355,6 +1941,7 @@ function SharedPanel({ A, data, mutate, say }) {
               <div style={{ textAlign: "right" }}>
                 <div className="ml-num ml-credit" style={{ fontWeight: 600 }}>{fmt(x.pending)}</div>
                 <div className="ml-sub">{x.shareFriend || "a friend"} owes</div>
+                <button className="ml-btn ghost sm" style={{ marginTop: 6 }} onClick={() => removeBill(x)}>Delete</button>
               </div>
             </div>
             <div className="ml-form" style={{ marginTop: 10 }}>
@@ -1364,10 +1951,9 @@ function SharedPanel({ A, data, mutate, say }) {
                   onChange={(e) => setF({ ...f, [x.id]: { ...v, amount: e.target.value } })} />
               </Field>
               <Field label="Into which account">
-                <select className="ml-in" value={v.accountId || (data.accounts[0] || {}).id}
-                  onChange={(e) => setF({ ...f, [x.id]: { ...v, accountId: e.target.value } })}>
-                  {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                <Pick value={v.accountId || (data.accounts[0] || {}).id}
+                  onChange={(val) => setF({ ...f, [x.id]: { ...v, accountId: val } })}
+                  options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
               </Field>
             </div>
             <div className="ml-flex" style={{ marginTop: 10 }}>
@@ -1404,13 +1990,14 @@ function SharedPanel({ A, data, mutate, say }) {
                   const a = d.accounts.find((x) => x.id === t.accountId);
                   if (a) a.balance = r2(a.balance - num(t.amount));
                   d.savingsTx = d.savingsTx.filter((x) => x.id !== t.id);
-                })}>×</button>
+                })}><TrashIcon /></button>
               </span>
             </div>
           ))}
         </>
       )}
     </div>
+    </>
   );
 }
 
@@ -1418,6 +2005,7 @@ function SharedPanel({ A, data, mutate, say }) {
 function Emis({ A, data, mutate, say }) {
   const [e, setE] = useState({ friend: "", item: "", cardId: "", principal: "", months: "6", startDate: TODAY(), note: "" });
   const [rp, setRp] = useState({});
+  const [repay, setRepay] = useState(null);
   const [open, setOpen] = useState(false);
 
   const add = () => {
@@ -1447,41 +2035,40 @@ function Emis({ A, data, mutate, say }) {
 
   return (
     <>
-      <div className="ml-stats">
-        <Stat label="Owed to you" value={fmt0(A.receivableTotal)} note="shared bills + EMIs" tone="credit" />
-        <Stat label="Shared bills pending" value={fmt0(A.sharedPending)} note={`${fmt0(A.sharedBilled)} split so far`} />
-        <Stat label="Friends' EMI left" value={fmt0(A.receivable)} note={`${A.emiRows.length} purchases`} />
-        <Stat label="Past due" value={fmt0(A.overdueTotal)} tone={A.overdueTotal > 0 ? "debit" : null} note="billed but not repaid" />
-      </div>
-
-      <SharedPanel A={A} data={data} mutate={mutate} say={say} />
+      {A.emiRows.length > 0 && (
+        <StatRow>
+          <Stat label="Owed to you" value={fmt0(A.receivable)} tone="credit"
+            note={`${A.emiRows.length} purchase${A.emiRows.length > 1 ? "s" : ""} · ${fmt0(A.cardBlocked)} blocking your limit`} />
+          <Stat label="Past due" value={fmt0(A.overdueTotal)} tone={A.overdueTotal > 0 ? "debit" : null}
+            note={A.overdueTotal > 0 ? "billed but not repaid" : "everyone's up to date"} />
+        </StatRow>
+      )}
 
       <div className="ml-card">
         <div className="ml-between">
           <div>
             <div className="ml-eyebrow">Friends' purchases</div>
-            <div className="ml-sub" style={{ marginTop: 4 }}>Your card is billed on schedule whether or not they pay. These never count as your spending.</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>The full amount holds against your card's limit from the day they buy and is released as they repay you, while only the instalments actually due show as payable. These never count as your spending.</div>
           </div>
-          <button className="ml-btn sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Track EMI"}</button>
+          <button className="ml-btn sm" onClick={() => setOpen(true)}>Track EMI</button>
         </div>
 
         {open && (
-          <>
-            <div className="ml-form" style={{ marginTop: 14 }}>
+          <Modal title="Track a friend's EMI" onClose={() => setOpen(false)}>
+            <div className="ml-form">
               <Field label="Friend"><input className="ml-in" value={e.friend} placeholder="Name" onChange={(x) => setE({ ...e, friend: x.target.value })} /></Field>
               <Field label="What they bought"><input className="ml-in" value={e.item} placeholder="e.g. Phone" onChange={(x) => setE({ ...e, item: x.target.value })} /></Field>
               <Field label="On which card">
-                <select className="ml-in" value={e.cardId || (data.cards[0] || {}).id} onChange={(x) => setE({ ...e, cardId: x.target.value })}>
-                  {data.cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <Pick value={e.cardId || (data.cards[0] || {}).id} onChange={(v) => setE({ ...e, cardId: v })}
+                  options={data.cards.map((c) => ({ value: c.id, label: c.name }))} />
               </Field>
               <Field label="Total amount"><input className="ml-in ml-num" inputMode="decimal" value={e.principal} placeholder="0" onChange={(x) => setE({ ...e, principal: x.target.value })} /></Field>
               <Field label="Months"><input className="ml-in ml-num" inputMode="numeric" value={e.months} onChange={(x) => setE({ ...e, months: x.target.value })} /></Field>
-              <Field label="First instalment"><input className="ml-in ml-num" type="date" value={e.startDate} onChange={(x) => setE({ ...e, startDate: x.target.value })} /></Field>
+              <Field label="First instalment"><DateField value={e.startDate} onChange={(v) => setE({ ...e, startDate: v })} /></Field>
               <Field label="Note" span><input className="ml-in" value={e.note} placeholder="Terms you agreed on" onChange={(x) => setE({ ...e, note: x.target.value })} /></Field>
             </div>
             <div style={{ marginTop: 12 }}><button className="ml-btn" onClick={add}>Start tracking</button></div>
-          </>
+          </Modal>
         )}
       </div>
 
@@ -1503,7 +2090,7 @@ function Emis({ A, data, mutate, say }) {
               <button className="ml-x" title="Remove" onClick={() => mutate((d) => {
                 d.emis = d.emis.filter((z) => z.id !== x.id);
                 d.repayments = d.repayments.filter((z) => z.emiId !== x.id);
-              })}>×</button>
+              })}><TrashIcon /></button>
             </div>
 
             <div className="ml-bar" style={{ marginTop: 12 }}>
@@ -1521,21 +2108,31 @@ function Emis({ A, data, mutate, say }) {
             </div>
 
             <hr className="ml-hr" />
-            <div className="ml-eyebrow">Repayments received</div>
-            <div className="ml-form" style={{ marginTop: 10 }}>
-              <Field label="Amount">
-                <input className="ml-in ml-num" inputMode="decimal" value={v.amount} placeholder={String(x.monthly)}
-                  onChange={(ev) => setRp({ ...rp, [x.id]: { ...v, amount: ev.target.value } })} />
-              </Field>
-              <Field label="Received on">
-                <input className="ml-in ml-num" type="date" value={v.date || TODAY()}
-                  onChange={(ev) => setRp({ ...rp, [x.id]: { ...v, date: ev.target.value } })} />
-              </Field>
+            <div className="ml-between">
+              <div className="ml-eyebrow">Repayments received</div>
+              <button className="ml-btn sm" onClick={() => { setRepay(x.id); setRp({ ...rp, [x.id]: { ...v, amount: String(x.monthly) } }); }}>
+                Log repayment
+              </button>
             </div>
-            <div className="ml-flex" style={{ marginTop: 10 }}>
-              <button className="ml-btn sm" onClick={() => logRepayment(x)}>Log repayment</button>
-              <button className="ml-btn sm ghost" onClick={() => setRp({ ...rp, [x.id]: { ...v, amount: String(x.monthly) } })}>Fill one instalment</button>
-            </div>
+
+            {repay === x.id && (
+              <Modal title={`Repayment from ${x.friend}`} subtitle={`${fmt0(x.monthly)} a month · ${fmt0(x.pending || x.outstanding)} outstanding`}
+                onClose={() => setRepay(null)}>
+                <div className="ml-form">
+                  <Field label="Amount">
+                    <input className="ml-in ml-num" inputMode="decimal" value={v.amount} placeholder={String(x.monthly)}
+                      onChange={(ev) => setRp({ ...rp, [x.id]: { ...v, amount: ev.target.value } })} />
+                  </Field>
+                  <Field label="Received on">
+                    <DateField value={v.date || TODAY()} onChange={(val) => setRp({ ...rp, [x.id]: { ...v, date: val } })} />
+                  </Field>
+                </div>
+                <div className="ml-flex" style={{ marginTop: 12 }}>
+                  <button className="ml-btn" onClick={() => { logRepayment(x); setRepay(null); }}>Log it</button>
+                  <button className="ml-btn ghost" onClick={() => setRp({ ...rp, [x.id]: { ...v, amount: String(x.monthly) } })}>One instalment</button>
+                </div>
+              </Modal>
+            )}
 
             {mine.length > 0 && (
               <div style={{ marginTop: 12 }}>
@@ -1544,7 +2141,7 @@ function Emis({ A, data, mutate, say }) {
                     <span>{fmtDate(r.date)} <span className="ml-sub">· {r.note}</span></span>
                     <span className="ml-flex">
                       <span className="ml-num ml-credit">{fmt(r.amount)}</span>
-                      <button className="ml-x" onClick={() => mutate((d) => { d.repayments = d.repayments.filter((z) => z.id !== r.id); })}>×</button>
+                      <button className="ml-x" onClick={() => mutate((d) => { d.repayments = d.repayments.filter((z) => z.id !== r.id); })}><TrashIcon /></button>
                     </span>
                   </div>
                 ))}
@@ -1594,21 +2191,20 @@ function Auto({ A, data, mutate, say }) {
               Mapped to an account or a card. On the due date the balance moves on its own and the entry lands in the ledger.
             </div>
           </div>
-          <button className="ml-btn sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Add payment"}</button>
+          <button className="ml-btn sm" onClick={() => setOpen(true)}>Add payment</button>
         </div>
 
         {open && (
-          <>
-            <div className="ml-form" style={{ marginTop: 14 }}>
+          <Modal title="Schedule a payment" onClose={() => setOpen(false)}>
+            <div className="ml-form">
               <Field label="Name"><input className="ml-in" value={r.name} placeholder="e.g. Home loan, Rent, SIP" onChange={(e) => setR({ ...r, name: e.target.value })} /></Field>
               <Field label="Amount"><input className="ml-in ml-num" inputMode="decimal" value={r.amount} placeholder="0" onChange={(e) => setR({ ...r, amount: e.target.value })} /></Field>
               <Field label="Repeats">
-                <select className="ml-in" value={r.frequency} onChange={(e) => setR({ ...r, frequency: e.target.value })}>
-                  <option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option><option value="yearly">Yearly</option>
-                </select>
+                <Pick value={r.frequency} onChange={(v) => setR({ ...r, frequency: v })}
+                  options={[["weekly", "Weekly"], ["monthly", "Monthly"], ["quarterly", "Quarterly"], ["yearly", "Yearly"]]
+                    .map(([value, label]) => ({ value, label }))} />
               </Field>
-              <Field label="Next due"><input className="ml-in ml-num" type="date" value={r.nextDue} onChange={(e) => setR({ ...r, nextDue: e.target.value })} /></Field>
+              <Field label="Next due"><DateField value={r.nextDue} onChange={(v) => setR({ ...r, nextDue: v })} /></Field>
               <Field label="Deduct from">
                 <div className="ml-seg">
                   <button data-on={r.sourceType === "savings" ? "1" : "0"} onClick={() => setR({ ...r, sourceType: "savings", sourceId: "" })}>Account</button>
@@ -1616,14 +2212,11 @@ function Auto({ A, data, mutate, say }) {
                 </div>
               </Field>
               <Field label={r.sourceType === "savings" ? "Which account" : "Which card"}>
-                <select className="ml-in" value={r.sourceId || (sources[0] || {}).id} onChange={(e) => setR({ ...r, sourceId: e.target.value })}>
-                  {sources.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </select>
+                <Pick value={r.sourceId || (sources[0] || {}).id} onChange={(v) => setR({ ...r, sourceId: v })}
+                  options={sources.map((x) => ({ value: x.id, label: x.name }))} />
               </Field>
               <Field label="Category">
-                <select className="ml-in" value={r.category} onChange={(e) => setR({ ...r, category: e.target.value })}>
-                  {data.config.categories.map((c) => <option key={c} value={c}>{c}{NON_EXPENSE.includes(c) ? " (not an expense)" : ""}</option>)}
-                </select>
+                <Pick value={r.category} onChange={(v) => setR({ ...r, category: v })} options={data.config.categories.map((c) => ({ value: c, label: c, hint: isExcluded(data.config, c) ? "tracked, not counted as spending" : undefined }))} />
               </Field>
               <Field label="Total instalments (0 = open-ended)">
                 <input className="ml-in ml-num" inputMode="numeric" value={r.totalInstallments} placeholder="e.g. 180 for a loan" onChange={(e) => setR({ ...r, totalInstallments: e.target.value })} />
@@ -1639,7 +2232,7 @@ function Auto({ A, data, mutate, say }) {
               Split rent works here: the full amount leaves your account, only your slice counts as spending, and their slice waits on the Friends tab.
             </div>
             <div style={{ marginTop: 12 }}><button className="ml-btn" onClick={add}>Schedule it</button></div>
-          </>
+          </Modal>
         )}
       </div>
 
@@ -1657,7 +2250,7 @@ function Auto({ A, data, mutate, say }) {
                     <div style={{ fontWeight: 600 }}>{x.name} {!x.active && <span className="ml-pill">Finished</span>}</div>
                     <div className="ml-sub" style={{ marginTop: 3 }}>
                       {x.frequency} · from {src} · {x.category}
-                      {NON_EXPENSE.includes(x.category) && <span style={{ color: "var(--stamp)" }}> · not an expense</span>}
+                      {isExcluded(data.config, x.category) && <span style={{ color: "var(--stamp)" }}> · not counted as spending</span>}
                       {num(x.shareAmount) > 0 && <span style={{ color: "var(--credit)" }}> · {fmt0(num(x.shareAmount))} back from {x.shareFriend || "a friend"}</span>}
                     </div>
                     <div className="ml-sub ml-num" style={{ marginTop: 3 }}>
@@ -1687,25 +2280,35 @@ function Auto({ A, data, mutate, say }) {
 /* ---------- BUDGET ---------- */
 function Budget({ A, data, mutate, say }) {
   const [b, setB] = useState({ cat: "Groceries", amount: "" });
+  const [budgetOpen, setBudgetOpen] = useState(false);
   const totalCap = A.budgetRows.filter((x) => !x.target).reduce((s, x) => s + x.amount, 0);
   const totalUsed = A.budgetRows.filter((x) => !x.target).reduce((s, x) => s + x.used, 0);
 
   return (
     <>
-      <div className="ml-stats">
+      <StatRow>
         <Stat label="Budgeted" value={fmt0(totalCap)} note="expense categories" />
         <Stat label="Used" value={fmt0(totalUsed)} tone={totalUsed > totalCap && totalCap > 0 ? "debit" : null} />
         <Stat label="Left to spend" value={fmt0(Math.max(0, totalCap - totalUsed))} tone="credit" />
         <Stat label="Unbudgeted spend" value={fmt0(Math.max(0, A.spentMonth - totalUsed))} note="outside your caps" />
-      </div>
+      </StatRow>
 
       <div className="ml-card">
-        <div className="ml-eyebrow">Set money aside</div>
+        <div className="ml-between">
+          <div>
+            <div className="ml-eyebrow">Set money aside</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>A monthly cap per category, or a target for Investment.</div>
+          </div>
+          <button className="ml-btn sm" onClick={() => setBudgetOpen(true)}>Set a budget</button>
+        </div>
+      </div>
+
+      {budgetOpen && (
+        <Modal title="Set money aside" onClose={() => setBudgetOpen(false)}>
         <div className="ml-form">
           <Field label="Category">
-            <select className="ml-in" value={b.cat} onChange={(e) => setB({ ...b, cat: e.target.value })}>
-              {data.config.categories.filter((c) => !NON_INCOME.includes(c)).map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <Pick value={b.cat} onChange={(v) => setB({ ...b, cat: v })}
+              options={data.config.categories.map((c) => ({ value: c, label: c }))} />
           </Field>
           <Field label={b.cat === "Investment" ? "Monthly target" : "Monthly cap"}>
             <input className="ml-in ml-num" inputMode="decimal" value={b.amount} placeholder="0" onChange={(e) => setB({ ...b, amount: e.target.value })} />
@@ -1716,11 +2319,13 @@ function Budget({ A, data, mutate, say }) {
             if (num(b.amount) <= 0) return say("Enter an amount above zero.");
             mutate((d) => { d.budgets[b.cat] = num(b.amount); });
             setB({ ...b, amount: "" });
+            setBudgetOpen(false);
             say(`${b.cat} set to ${fmt0(num(b.amount))} a month.`);
           }}>Save budget</button>
           <span className="ml-sub">Investment is a target to hit, not a cap to stay under.</span>
         </div>
-      </div>
+        </Modal>
+      )}
 
       <div className="ml-card">
         <div className="ml-eyebrow">This month against plan</div>
@@ -1821,12 +2426,12 @@ function Backup({ A, data, mutate, setData, say }) {
 
   return (
     <>
-      <div className="ml-stats">
-        <Stat label="Entries" value={String(entries)} note={`${data.accounts.length} accounts · ${data.cards.length} cards`} />
-        <Stat label="Backup size" value={size} />
-        <Stat label="Last taken" value={last ? fmtDate(last.slice(0, 10)) : "Never"} tone={last ? null : "debit"} />
-        <Stat label="Stored" value="This device" note="nothing is uploaded" />
-      </div>
+      <StatRow>
+        <Stat raw label="Entries" value={String(entries)} note={`${data.accounts.length} accounts · ${data.cards.length} cards`} />
+        <Stat raw label="Backup size" value={size} />
+        <Stat raw label="Last taken" value={last ? fmtDate(last.slice(0, 10)) : "Never"} tone={last ? null : "debit"} />
+        <Stat raw label="Stored" value="This device" note="nothing is uploaded" />
+      </StatRow>
 
       <div className="ml-card">
         <div className="ml-eyebrow">Take a backup</div>
@@ -1885,6 +2490,8 @@ function Settings({ A, data, mutate, setData, say, setPosted, where }) {
   const [rate, setRate] = useState(String(data.config.repoRate));
   const [income, setIncome] = useState(String(data.config.monthlyIncome || ""));
   const [newCat, setNewCat] = useState("");
+  const [catCounts, setCatCounts] = useState(true);
+  const [catOpen, setCatOpen] = useState(false);
   const [armed, setArmed] = useState(false);
 
   const applyRate = () => {
@@ -1926,41 +2533,74 @@ function Settings({ A, data, mutate, setData, say, setPosted, where }) {
         </div>
         <div className="ml-flex" style={{ marginTop: 12 }}>
           <button className="ml-btn" onClick={() => { mutate((d) => { d.config.monthlyIncome = num(income); }); say("Income updated."); }}>Save income</button>
-          <span className="ml-sub">Used for the save rate and the advice on the Overview tab.</span>
+          <span className="ml-sub">An analysis figure only — it drives the save rate and the advice on Overview, and never appears as a transaction. Salary landing in an account is logged separately under Move money.</span>
         </div>
       </div>
 
       <div className="ml-card">
-        <div className="ml-eyebrow">Categories</div>
-        <div className="ml-sub" style={{ marginTop: 4, marginBottom: 10 }}>
-          Investment, Transfer and Card Payment are permanently excluded from expense totals.
+        <div className="ml-between">
+          <div>
+            <div className="ml-eyebrow">Categories</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>
+              {data.config.categories.length} in use · {data.config.categories.filter((c) => isExcluded(data.config, c)).length} tracked only
+            </div>
+          </div>
+          <button className="ml-btn sm" onClick={() => setCatOpen(true)}>Manage</button>
         </div>
-        <div className="ml-flex">
-          {data.config.categories.map((c) => (
-            <span key={c} className={"ml-pill " + (NON_EXPENSE.includes(c) ? "on" : "")} style={{ padding: "4px 8px" }}>
-              {c}
-              {!BASE_CATEGORIES.includes(c) && (
-                <button className="ml-x" style={{ fontSize: 13, padding: "0 0 0 5px" }}
-                  onClick={() => mutate((d) => { d.config.categories = d.config.categories.filter((x) => x !== c); })}>×</button>
-              )}
-            </span>
-          ))}
-        </div>
-        <div className="ml-form" style={{ marginTop: 12 }}>
-          <Field label="New category">
-            <input className="ml-in" value={newCat} placeholder="e.g. Gifts" onChange={(e) => setNewCat(e.target.value)} />
-          </Field>
-          <div className="ml-f" style={{ display: "flex", alignItems: "flex-end" }}>
+      </div>
+
+      {catOpen && (
+        <Modal title="Categories" subtitle="Tracked-only ones still move your balance" onClose={() => setCatOpen(false)}>
+          {data.config.categories.map((c) => {
+            const off = isExcluded(data.config, c);
+            return (
+              <div key={c} className="ml-between" style={{ padding: "8px 0", borderBottom: "1px solid var(--rule-soft)" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, fontSize: 14, overflowWrap: "anywhere" }}>{c}</div>
+                  <div className="ml-sub" style={{ marginTop: 1 }}>{off ? "Tracked only" : "Counts as spending"}</div>
+                </div>
+                <div className="ml-flex" style={{ flexWrap: "nowrap" }}>
+                  <button className="ml-btn ghost sm" onClick={() => mutate((d) => {
+                    const list = d.config.excluded || DEFAULT_EXCLUDED.slice();
+                    d.config.excluded = off ? list.filter((x) => x !== c) : [...list, c];
+                  })}>{off ? "Count it" : "Track only"}</button>
+                  <button className="ml-x" title="Remove" onClick={() => {
+                    if (data.config.categories.length <= 1) return say("Keep at least one category.");
+                    mutate((d) => {
+                      d.config.categories = d.config.categories.filter((x) => x !== c);
+                      d.config.excluded = (d.config.excluded || []).filter((x) => x !== c);
+                    });
+                  }}><TrashIcon /></button>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="ml-form" style={{ marginTop: 14 }}>
+            <Field label="New category" span>
+              <input className="ml-in" value={newCat} placeholder="e.g. Gifts" onChange={(e) => setNewCat(e.target.value)} />
+            </Field>
+            <Field label="Counts as spending" span>
+              <div className="ml-seg">
+                <button data-on={catCounts ? "1" : "0"} onClick={() => setCatCounts(true)}>Yes</button>
+                <button data-on={!catCounts ? "1" : "0"} onClick={() => setCatCounts(false)}>Track only</button>
+              </div>
+            </Field>
+          </div>
+          <div style={{ marginTop: 12 }}>
             <button className="ml-btn" onClick={() => {
               const v = newCat.trim();
               if (!v) return say("Type a name first.");
               if (data.config.categories.includes(v)) return say("That one already exists.");
-              mutate((d) => d.config.categories.splice(d.config.categories.length - 1, 0, v));
-              setNewCat(""); say("Category added.");
-            }}>Add</button>
+              mutate((d) => {
+                d.config.categories = [...d.config.categories, v];
+                if (!catCounts) d.config.excluded = [...(d.config.excluded || DEFAULT_EXCLUDED.slice()), v];
+              });
+              setNewCat("");
+            }}>Add category</button>
           </div>
-        </div>
-      </div>
+        </Modal>
+      )}
 
       <div className="ml-card">
         <div className="ml-eyebrow">Your data</div>
@@ -1981,16 +2621,6 @@ function Settings({ A, data, mutate, setData, say, setPosted, where }) {
 
       </div>
 
-      <div className="ml-card">
-        <div className="ml-eyebrow">How the numbers are built</div>
-        <ul style={{ fontSize: 13, color: "var(--body)", paddingLeft: 18, marginTop: 8, lineHeight: 1.7 }}>
-          <li>Interest is driven solely by the RBI repo rate in this tab. It compounds daily on every account marked as earning interest, and one entry covers every day since your last visit — so the total is the same whether you open the app daily or once a year.</li>
-          <li>Investment, Transfer and Card Payment entries never reach the expense column or the category chart.</li>
-          <li>Friends' EMI instalments raise the card outstanding but stay out of your spending — they're a receivable.</li>
-          <li>Scheduled payments catch up on load, so a month away still lands the right number of instalments.</li>
-          <li>A friend's share of a bill is subtracted from your expense and waits on the Friends tab. When they pay you, the balance goes up but income does not.</li>
-        </ul>
-      </div>
     </>
   );
 }
