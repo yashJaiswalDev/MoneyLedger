@@ -165,6 +165,20 @@ select.ml-in{-webkit-appearance:none;appearance:none;background-image:linear-gra
 .ml-flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .ml-between{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
 .ml-ta{width:100%;min-height:100px;padding:9px;border:1px solid var(--rule);border-radius:2px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:16px;line-height:1.4;background:var(--field);color:var(--ink);word-break:break-all;}
+/* ---- alerts ---- */
+.ml-alert{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--rule-soft);}
+.ml-alert:last-child{border-bottom:0;}
+.ml-adot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--soft);}
+.ml-adot.now{background:var(--debit);}
+.ml-adot.soon{background:var(--amber);}
+.ml-adot.ok{background:var(--credit);}
+.ml-atitle{font-weight:600;font-size:14px;}
+.ml-ameta{font-size:12px;color:var(--soft);margin-top:2px;}
+.ml-awhen{margin-left:auto;text-align:right;flex:0 0 auto;}
+.ml-awhen b{display:block;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;}
+.ml-tabbadge{display:inline-block;min-width:16px;padding:0 4px;margin-left:5px;border-radius:8px;
+  background:var(--debit);color:var(--sheet);font-family:'IBM Plex Mono',monospace;font-size:9.5px;line-height:16px;text-align:center;}
+
 /* ---- modal ---- */
 .ml-scrim{position:fixed;inset:0;z-index:80;background:rgba(20,22,27,.45);display:flex;
   align-items:center;justify-content:center;padding:16px;}
@@ -267,6 +281,39 @@ const addMonths = (s, n) => {
   return isoOf(dt);
 };
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthOf = (iso) => iso.slice(0, 7);
+const addMonthKey = (key, n) => {
+  const [y, m] = key.split("-").map(Number);
+  const dt = new Date(y, m - 1 + n, 1);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+};
+/* Day N of a given month, clamped for short months. */
+const onDay = (key, day) => {
+  const [y, m] = key.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return `${key}-${String(Math.min(Math.max(1, day), last)).padStart(2, "0")}`;
+};
+/* The statement day on or before this date — where the open cycle began. */
+const cycleStartOn = (iso, sday) => {
+  const here = onDay(monthOf(iso), sday);
+  return iso >= here ? here : onDay(addMonthKey(monthOf(iso), -1), sday);
+};
+/* Payment date for a statement that closed on this date. */
+const dueAfter = (close, dday) => {
+  const same = onDay(monthOf(close), dday);
+  return same > close ? same : onDay(addMonthKey(monthOf(close), 1), dday);
+};
+/* A card carries two dates: when its cycle turns over, and when that bill is
+   payable. Only the day-of-month matters — both repeat every month. */
+const clampDay = (n, fallback) => Math.min(28, Math.max(1, num(n) || fallback));
+const stmtDay = (c) => clampDay(c.cycleDate ? c.cycleDate.slice(8, 10) : c.statementDay, 1);
+const dueDayOf = (c) => clampDay(c.dueDate ? c.dueDate.slice(8, 10) : c.dueDay, 20);
+/* The cycle running today, and the date its bill falls due. */
+const currentCycle = (c, today) => {
+  const start = cycleStartOn(today, stmtDay(c));
+  const close = onDay(addMonthKey(monthOf(start), 1), stmtDay(c));
+  return { start, close, end: addDays(close, -1), due: dueAfter(close, dueDayOf(c)) };
+};
 const fmtDate = (s) => {
   if (!s) return "—";
   const [y, m, d] = s.split("-");
@@ -402,7 +449,7 @@ const blank = () => ({
     { id: uid(), name: "Emergency fund", type: "Savings", earningInterest: true, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
     { id: uid(), name: "Cash wallet", type: "Cash", earningInterest: false, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
   ],
-  cards: [{ id: uid(), name: "Primary credit card", limit: 200000 }],
+  cards: [{ id: uid(), name: "Primary credit card", limit: 200000, cycleDate: onDay(monthOf(TODAY()), 15), dueDate: onDay(addMonthKey(monthOf(TODAY()), 1), 5) }],
   spends: [],       // credit-card ledger
   savingsTx: [],    // deposits, withdrawals, interest, auto-debits, card payments
   emis: [],         // friends' purchases on your card
@@ -410,6 +457,57 @@ const blank = () => ({
   recurring: [],    // loans, rent, SIPs, subscriptions
   budgets: {},      // category -> monthly amount
 });
+
+/* Cuts a card's activity into billing cycles. Everything dated inside a cycle
+   lands on that cycle's statement; the cycle still running is not yet billed.
+   Payments name the statement they clear, and anything left unpaid stays on
+   that statement as overdue rather than quietly disappearing. */
+function buildStatements(card, entries, payments, today) {
+  const sday = stmtDay(card), dday = dueDayOf(card);
+  if (entries.length === 0) return [];
+  const first = entries.reduce((min, e) => (e.date < min ? e.date : min), entries[0].date);
+  let start = cycleStartOn(first < today ? first : today, sday);
+
+  const byKey = {};
+  let loose = 0;
+  payments.forEach((t) => {
+    if (t.statementKey) byKey[t.statementKey] = r2((byKey[t.statementKey] || 0) + num(t.amount));
+    else loose = r2(loose + num(t.amount));   // older payments with no statement named
+  });
+
+  const out = [];
+  let guard = 0;
+  while (guard++ < 300) {
+    const close = onDay(addMonthKey(monthOf(start), 1), sday);
+    const inside = entries.filter((e) => e.date >= start && e.date < close);
+    const amount = r2(inside.reduce((sum, e) => sum + num(e.amount), 0));
+    const open = close > today;
+    out.push({
+      key: close, start, close, end: addDays(close, -1), due: dueAfter(close, dday),
+      amount, entries: inside, open, paid: 0, balance: amount,
+    });
+    if (open) break;
+    start = close;
+  }
+
+  /* named payments first, then anything unallocated against the oldest bill */
+  out.forEach((st) => {
+    const named = byKey[st.key] || 0;
+    st.paid = named;
+    st.balance = r2(st.amount - named);
+  });
+  out.forEach((st) => {
+    if (loose <= 0 || st.open || st.balance <= 0) return;
+    const take = Math.min(loose, st.balance);
+    st.paid = r2(st.paid + take);
+    st.balance = r2(st.balance - take);
+    loose = r2(loose - take);
+  });
+  out.forEach((st) => {
+    st.overdue = !st.open && st.balance > 0 && st.due < today;
+  });
+  return out;
+}
 
 /* ---------- engines ---------- */
 /* Daily interest. Rate is read from config only — never hardcoded here. */
@@ -504,7 +602,7 @@ function sampleData() {
   sal.balance = 184500; sal.lastAccrual = addDays(t, -4);
   emg.balance = 260000; emg.type = "Savings (FD linked)"; emg.lastAccrual = addDays(t, -4);
   cash.balance = 4200;
-  d.cards.push({ id: uid(), name: "Travel card", limit: 120000 });
+  d.cards.push({ id: uid(), name: "Travel card", limit: 120000, cycleDate: onDay(monthOf(t), 25), dueDate: onDay(addMonthKey(monthOf(t), 1), 14) });
   const c1 = d.cards[0].id, c2 = d.cards[1].id;
   const rows = [
     [2, "Groceries", 3480, "Weekly big basket", c1], [3, "Dining", 920, "Team lunch", c1],
@@ -667,16 +765,51 @@ export default function MoneyLedger() {
     const interestAll = r2(data.savingsTx.filter((t) => t.type === "interest").reduce((s, t) => s + num(t.amount), 0));
 
     const cardRows = data.cards.map((c) => {
-      const own = r2(data.spends.filter((s) => s.cardId === c.id).reduce((s, x) => s + num(x.amount), 0));
+      const spends = data.spends.filter((x) => x.cardId === c.id)
+        .map((x) => ({ date: x.date, amount: num(x.amount), label: x.note || x.category, kind: "spend" }));
+
+      /* A friend's instalments are dated, so they fall into cycles like any spend. */
       const mine = emiRows.filter((e) => e.cardId === c.id);
-      /* Billed: only the instalments whose month has come due are payable now. */
-      const emiDue = r2(mine.reduce((s, e) => s + Math.min(num(e.principal), e.due * e.monthly), 0));
-      /* Blocked: the rest of the purchase still sits against the limit until repaid. */
-      const blocked = r2(mine.reduce((s, e) => s + Math.max(0, e.outstanding), 0));
-      const paid = r2(data.savingsTx.filter((t) => t.type === "card-payment" && t.cardId === c.id).reduce((s, t) => s + num(t.amount), 0));
-      const outstanding = r2(own + emiDue - paid);
-      const used = r2(own - paid + blocked);
-      return { ...c, own, friends: emiDue, emiDue, blocked, paid, outstanding, used, available: r2(num(c.limit) - used) };
+      const instal = [];
+      mine.forEach((e) => {
+        for (let i = 0; i < num(e.months); i++) {
+          instal.push({
+            date: addMonths(e.startDate, i), amount: e.monthly, kind: "emi",
+            label: `${e.friend} — ${e.item} (${i + 1}/${e.months})`,
+          });
+        }
+      });
+
+      const payments = data.savingsTx.filter((t) => t.type === "card-payment" && t.cardId === c.id);
+      const statements = buildStatements(c, [...spends, ...instal], payments, today);
+      const openSt = statements.find((x) => x.open) || null;
+      const closed = statements.filter((x) => !x.open);
+
+      const billed = r2(closed.reduce((sum, x) => sum + Math.max(0, x.balance), 0));
+      const unbilled = openSt ? openSt.amount : 0;
+      /* Instalments not yet on any statement still hold against the limit. */
+      const horizon = openSt ? openSt.close : today;
+      const emiHold = r2(mine.reduce((sum, e) => {
+        const onCard = instal.filter((i) => i.date < horizon && i.label.startsWith(`${e.friend} — ${e.item}`))
+          .reduce((a, i) => a + i.amount, 0);
+        return sum + Math.max(0, num(e.principal) - onCard);
+      }, 0));
+
+      const paid = r2(payments.reduce((sum, t) => sum + num(t.amount), 0));
+      const used = r2(billed + unbilled + emiHold);
+      const nextBill = closed.find((x) => x.balance > 0) || (openSt && openSt.amount > 0 ? openSt : null);
+
+      return {
+        ...c, cycle: currentCycle(c, today), statements, closed, openSt, billed, unbilled, emiHold, paid,
+        own: r2(spends.reduce((sum, x) => sum + x.amount, 0)),
+        emiDue: r2(instal.filter((i) => !openSt || i.date < openSt.start).reduce((a, i) => a + i.amount, 0)),
+        blocked: emiHold,
+        outstanding: billed,
+        overdue: r2(closed.filter((x) => x.overdue).reduce((sum, x) => sum + x.balance, 0)),
+        nextDue: nextBill ? nextBill.due : null,
+        nextDueAmount: nextBill ? (nextBill.open ? nextBill.amount : nextBill.balance) : 0,
+        used, available: r2(num(c.limit) - used),
+      };
     });
     const cardOutstanding = r2(cardRows.reduce((s, c) => s + c.outstanding, 0));
 
@@ -703,6 +836,64 @@ export default function MoneyLedger() {
 
     const upcoming = data.recurring.filter((r) => r.active)
       .sort((a, b) => (a.nextDue || "").localeCompare(b.nextDue || "")).slice(0, 6);
+
+    /* Everything with a date attached, gathered into one feed. */
+    const alerts = [];
+    const inDays = (d) => daysBetween(today, d);
+    cardRows.forEach((c) => {
+      c.closed.filter((st) => st.balance > 0).forEach((st) => {
+        const left = inDays(st.due);
+        if (left > 12) return;
+        alerts.push({
+          id: `card-${c.id}-${st.key}`, kind: "Card bill", amount: st.balance, title: `${c.name} — ${fmt0(st.balance)} due`,
+          meta: `Statement of ${fmtDate(st.end)}${st.paid > 0 ? ` · ${fmt0(st.paid)} already paid` : ""}`,
+          date: st.due, days: left, level: left < 0 ? "now" : left <= 5 ? "soon" : "later",
+        });
+      });
+    });
+    data.recurring.filter((r) => r.active && r.nextDue).forEach((r) => {
+      const left = inDays(r.nextDue);
+      if (left > 7) return;
+      alerts.push({
+        id: `auto-${r.id}`, kind: "Auto-payment", amount: num(r.amount), title: `${r.name} — ${fmt0(r.amount)}`,
+        meta: `From ${r.sourceType === "savings" ? accOf(r.sourceId) : cardOf(r.sourceId)}`,
+        date: r.nextDue, days: left, level: left < 0 ? "now" : left <= 5 ? "soon" : "later",
+      });
+    });
+    emiRows.filter((e) => e.overdue > 0).forEach((e) => {
+      alerts.push({
+        id: `emi-${e.id}`, kind: "Owed to you", amount: 0, title: `${e.friend} is behind by ${fmt0(e.overdue)}`,
+        meta: `${e.item} · ${e.due} of ${e.months} instalments billed to your card`,
+        date: today, days: 0, level: "now",
+      });
+    });
+    sharedRows.filter((x) => x.pending > 0 && daysBetween(x.date, today) >= 14).forEach((x) => {
+      alerts.push({
+        id: `shared-${x.id}`, kind: "Owed to you", amount: 0, title: `${x.shareFriend || "A friend"} owes ${fmt0(x.pending)}`,
+        meta: `${x.note || x.category} · split ${daysBetween(x.date, today)} days ago`,
+        date: x.date, days: 0, level: "soon",
+      });
+    });
+    budgetRows.filter((b) => !b.target && b.pct >= 80).forEach((b) => {
+      alerts.push({
+        id: `budget-${b.cat}`, kind: "Budget", amount: 0, title: `${b.cat} at ${b.pct}% of ${fmt0(b.amount)}`,
+        meta: b.pct > 100 ? `${fmt0(b.used - b.amount)} over the cap` : `${fmt0(b.amount - b.used)} left this month`,
+        date: today, days: 0, level: b.pct > 100 ? "now" : "soon",
+      });
+    });
+    const lastBackup = data.config.lastBackup ? data.config.lastBackup.slice(0, 10) : null;
+    const backupAge = lastBackup ? daysBetween(lastBackup, today) : null;
+    if (backupAge === null || backupAge >= 14) {
+      alerts.push({
+        id: "backup", kind: "Housekeeping", amount: 0,
+        title: lastBackup ? `No backup for ${backupAge} days` : "No backup taken yet",
+        meta: "Browser storage can be cleared without warning — keep a copy elsewhere.",
+        date: today, days: 0, level: "later",
+      });
+    }
+    const rank = { now: 0, soon: 1, later: 2 };
+    alerts.sort((a, b) => (rank[a.level] - rank[b.level]) || (a.days - b.days) || a.title.localeCompare(b.title));
+    const urgent = alerts.filter((a) => a.level !== "later").length;
 
     /* dynamic tips */
     const tips = [];
@@ -737,6 +928,7 @@ export default function MoneyLedger() {
 
     return {
       share, mine, sharedRows, sharedBilled, sharedPending, settledIn, receivableTotal,
+      alerts, urgent,
       today, thisMonth, cardOf, accOf, emiRows, receivable, emiBilled, flows, expenses, investments,
       cardBlocked: r2(cardRows.reduce((s, c) => s + c.blocked, 0)),
       spentMonth, investedMonth, catRows, months, interestMonth, interestAll, cardRows, cardOutstanding,
@@ -779,7 +971,7 @@ export default function MoneyLedger() {
   const shown = resolveView();
   const TABS = [
     ["overview", "Overview"], ["accounts", "Accounts"], ["cards", "Cards"],
-    ["shared", "Shared"], ["emi", "Friends"], ["auto", "Auto-pay"], ["budget", "Budget"],
+    ["alerts", "Alerts"], ["shared", "Shared"], ["emi", "Friends"], ["auto", "Auto-pay"], ["budget", "Budget"],
     ["backup", "Backup"], ["settings", "Settings"],
   ];
 
@@ -815,7 +1007,10 @@ export default function MoneyLedger() {
           </div>
           <nav className="ml-tabs">
             {TABS.map(([id, label]) => (
-              <button key={id} className="ml-tab" data-on={tab === id ? "1" : "0"} onClick={() => setTab(id)}>{label}</button>
+              <button key={id} className="ml-tab" data-on={tab === id ? "1" : "0"} onClick={() => setTab(id)}>
+                {label}
+                {id === "alerts" && A.urgent > 0 && <span className="ml-tabbadge">{A.urgent}</span>}
+              </button>
             ))}
           </nav>
         </div>
@@ -825,6 +1020,7 @@ export default function MoneyLedger() {
         {tab === "overview" && <Overview A={A} data={data} posted={posted} setTab={setTab} />}
         {tab === "accounts" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} />}
         {tab === "cards" && <Cards A={A} data={data} mutate={mutate} say={say} />}
+        {tab === "alerts" && <Alerts A={A} setTab={setTab} />}
         {tab === "shared" && <SharedPanel A={A} data={data} mutate={mutate} say={say} />}
         {tab === "emi" && <Emis A={A} data={data} mutate={mutate} say={say} />}
         {tab === "auto" && <Auto A={A} data={data} mutate={mutate} say={say} />}
@@ -1513,18 +1709,23 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
 /* ---------- CARDS ---------- */
 function Cards({ A, data, mutate, say }) {
   const [s, setS] = useState({ cardId: "", amount: "", category: "Groceries", date: TODAY(), note: "", shared: false, shareFriend: "", shareAmount: "" });
-  const [pay, setPay] = useState({ cardId: "", accountId: "", amount: "" });
-  const [nc, setNc] = useState({ name: "", limit: "" });
+  const [pay, setPay] = useState({ cardId: "", accountId: "", amount: "", statementKey: "" });
+  const [nc, setNc] = useState({ name: "", limit: "", cycleDate: TODAY(), dueDate: addDays(TODAY(), 20) });
   const [showCard, setShowCard] = useState(false);
   const [focus, setFocus] = useState(null);
   const [edit, setEdit] = useState(null);
   const [spendOpen, setSpendOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
-  const [ec, setEc] = useState({ name: "", limit: "" });
+  const [ec, setEc] = useState({ name: "", limit: "", cycleDate: TODAY(), dueDate: TODAY() });
 
   const openEdit = (c) => {
     setEdit(edit === c.id ? null : c.id);
-    setEc({ name: c.name, limit: String(c.limit || "") });
+    const cyc = currentCycle(c, TODAY());
+    setEc({
+      name: c.name, limit: String(c.limit || ""),
+      cycleDate: c.cycleDate || cyc.start,
+      dueDate: c.dueDate || cyc.due,
+    });
   };
   const saveEdit = (c) => {
     if (!ec.name.trim()) return say("The card needs a name.");
@@ -1532,6 +1733,10 @@ function Cards({ A, data, mutate, say }) {
       const x = d.cards.find((z) => z.id === c.id);
       x.name = ec.name.trim();
       x.limit = num(ec.limit);
+      x.cycleDate = ec.cycleDate;
+      x.dueDate = ec.dueDate;
+      delete x.statementDay;
+      delete x.dueDay;
     });
     setEdit(null);
     say("Card updated.");
@@ -1556,22 +1761,33 @@ function Cards({ A, data, mutate, say }) {
       : back > 0 ? `Logged. ${fmt0(back)} sits as owed to you, not as your spending.` : "Spend logged.");
   };
 
+  const payCardId = pay.cardId || (data.cards[0] || {}).id;
+  const payCardRow = A.cardRows.find((c) => c.id === payCardId);
+  const payable = payCardRow
+    ? [...payCardRow.statements].reverse().filter((st) => st.open ? st.amount > 0 : st.balance > 0)
+    : [];
+  const payStatement = payable.find((st) => st.key === pay.statementKey) || payable[0] || null;
+
   const payCard = () => {
-    const card = pay.cardId || (data.cards[0] || {}).id;
     const acc = pay.accountId || (data.accounts[0] || {}).id;
-    if (!card || !acc) return say("Need a card and an account.");
-    if (num(pay.amount) <= 0) return say("Enter an amount above zero.");
+    if (!payCardId || !acc) return say("Need a card and an account.");
+    if (!payStatement) return say("Nothing outstanding on that card.");
+    const amt = num(pay.amount) || (payStatement.open ? payStatement.amount : payStatement.balance);
+    if (!(amt > 0)) return say("Enter an amount above zero.");
     mutate((d) => {
       const a = d.accounts.find((x) => x.id === acc);
-      a.balance = r2(a.balance - num(pay.amount));
+      a.balance = r2(a.balance - amt);
       d.savingsTx.push({
-        id: uid(), date: TODAY(), accountId: acc, cardId: card, type: "card-payment",
-        amount: num(pay.amount), category: "Card Payment", note: `Bill payment — ${A.cardOf(card)}`,
+        id: uid(), date: TODAY(), accountId: acc, cardId: payCardId, type: "card-payment",
+        statementKey: payStatement.key, amount: amt, category: "Card Payment",
+        note: `${A.cardOf(payCardId)} — statement of ${fmtDate(payStatement.end)}`,
       });
     });
     setPay({ ...pay, amount: "" });
     setPayOpen(false);
-    say("Card payment posted.");
+    say(amt < (payStatement.open ? payStatement.amount : payStatement.balance)
+      ? "Part payment posted — the rest stays on that statement."
+      : "Statement cleared.");
   };
 
   const spends = [...data.spends]
@@ -1606,12 +1822,37 @@ function Cards({ A, data, mutate, say }) {
               </span>
             </div>
             <div className="ml-flex" style={{ marginTop: 6, fontSize: 11.5, color: "var(--soft)", justifyContent: "space-between" }}>
-              <span>Yours {mask(fmt0(c.own))}</span>
-              <span>EMI due {mask(fmt0(c.emiDue))}</span>
-              <span>EMI blocking {mask(fmt0(c.blocked))}</span>
+              <span>Not yet billed {mask(fmt0(c.unbilled))}</span>
+              <span>EMI holding {mask(fmt0(c.emiHold))}</span>
               <span>Paid {mask(fmt0(c.paid))}</span>
               <span>Available {mask(fmt0(c.available))}</span>
             </div>
+            <div className="ml-sub" style={{ marginTop: 6 }}>
+              This cycle {fmtDate(c.cycle.start)} – {fmtDate(c.cycle.end)} · bill due {fmtDate(c.cycle.due)}
+              {c.nextDue ? ` · next payment ${fmt0(c.nextDueAmount)} on ${fmtDate(c.nextDue)}` : ""}
+            </div>
+
+            {c.statements.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                {[...c.statements].reverse().slice(0, 4).map((st) => (
+                  <div key={st.key} className="ml-between" style={{ padding: "6px 0", borderTop: "1px solid var(--rule-soft)", fontSize: 12.5 }}>
+                    <span>
+                      {fmtDate(st.start)} – {fmtDate(st.end)}
+                      {st.open
+                        ? <span className="ml-pill" style={{ marginLeft: 6 }}>Open</span>
+                        : st.balance <= 0
+                          ? <span className="ml-pill on" style={{ marginLeft: 6 }}>Paid</span>
+                          : st.overdue
+                            ? <span className="ml-pill off" style={{ marginLeft: 6 }}>Overdue</span>
+                            : <span className="ml-pill" style={{ marginLeft: 6 }}>Due {fmtDate(st.due)}</span>}
+                    </span>
+                    <span className="ml-num" style={{ color: st.open ? "var(--soft)" : st.balance > 0 ? "var(--debit)" : "var(--credit)" }}>
+                      {mask(fmt0(st.open ? st.amount : st.balance))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="ml-flex" style={{ marginTop: 8 }}>
               <button className="ml-btn ghost sm" onClick={() => openEdit(c)}>{edit === c.id ? "Cancel" : "Edit"}</button>
               {data.cards.length > 1 && (
@@ -1631,6 +1872,15 @@ function Cards({ A, data, mutate, say }) {
                     <input className="ml-in ml-num" inputMode="decimal" value={ec.limit}
                       onChange={(e) => setEc({ ...ec, limit: e.target.value })} />
                   </Field>
+                  <Field label="Billing cycle date">
+                    <DateField value={ec.cycleDate} onChange={(e) => setEc({ ...ec, cycleDate: e })} />
+                  </Field>
+                  <Field label="Payment due date">
+                    <DateField value={ec.dueDate} onChange={(e) => setEc({ ...ec, dueDate: e })} />
+                  </Field>
+                </div>
+                <div className="ml-sub" style={{ marginTop: 8 }}>
+                  The day of the month is what repeats — picking 15 Aug means every cycle turns over on the 15th.
                 </div>
                 <div style={{ marginTop: 10 }}>
                   <button className="ml-btn sm" onClick={() => saveEdit(c)}>Save changes</button>
@@ -1719,13 +1969,26 @@ function Cards({ A, data, mutate, say }) {
             <Pick value={pay.accountId || (data.accounts[0] || {}).id} onChange={(v) => setPay({ ...pay, accountId: v })}
               options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
           </Field>
+          <Field label="Which statement" span>
+            <Pick value={payStatement ? payStatement.key : ""} onChange={(v) => setPay({ ...pay, statementKey: v, amount: "" })}
+              placeholder="Nothing outstanding"
+              options={payable.map((st) => ({
+                value: st.key,
+                label: `${fmtDate(st.start)} – ${fmtDate(st.end)} · ${fmt0(st.open ? st.amount : st.balance)}`,
+                hint: st.open ? "still open, not billed yet" : st.overdue ? `overdue since ${fmtDate(st.due)}` : `due ${fmtDate(st.due)}`,
+              }))} />
+          </Field>
           <Field label="Amount" span>
-            <input className="ml-in ml-num" inputMode="decimal" value={pay.amount} placeholder="0" onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
+            <input className="ml-in ml-num" inputMode="decimal" value={pay.amount}
+              placeholder={payStatement ? String(payStatement.open ? payStatement.amount : payStatement.balance) : "0"}
+              onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
           </Field>
         </div>
         <div className="ml-flex" style={{ marginTop: 12 }}>
           <button className="ml-btn" onClick={payCard}>Pay bill</button>
-          <span className="ml-sub">Reduces the account balance and the card outstanding. Not counted twice as an expense.</span>
+          <span className="ml-sub">
+            Leave the amount blank to clear the whole statement. Pay less and the remainder stays on it, carrying forward as overdue.
+          </span>
         </div>
         </Modal>
       )}
@@ -1740,12 +2003,27 @@ function Cards({ A, data, mutate, say }) {
             <div className="ml-form">
               <Field label="Card name"><input className="ml-in" value={nc.name} placeholder="e.g. Cashback card" onChange={(e) => setNc({ ...nc, name: e.target.value })} /></Field>
               <Field label="Credit limit"><input className="ml-in ml-num" inputMode="decimal" value={nc.limit} placeholder="0" onChange={(e) => setNc({ ...nc, limit: e.target.value })} /></Field>
+              <Field label="Billing cycle date">
+                <DateField value={nc.cycleDate} onChange={(v) => setNc({ ...nc, cycleDate: v })} />
+              </Field>
+              <Field label="Payment due date">
+                <DateField value={nc.dueDate} onChange={(v) => setNc({ ...nc, dueDate: v })} />
+              </Field>
+            </div>
+            <div className="ml-sub" style={{ marginTop: 10 }}>
+              Pick any cycle date and its matching due date — the day of the month is what repeats. Cycle runs the
+              {" "}{fmtDate(nc.cycleDate)} to the day before the next one, with that bill payable on the
+              {" "}{fmtDate(nc.dueDate)}. Anything bought after a cycle closes belongs to the following bill.
             </div>
             <div style={{ marginTop: 12 }}>
               <button className="ml-btn" onClick={() => {
                 if (!nc.name.trim()) return say("Name the card first.");
-                mutate((d) => d.cards.push({ id: uid(), name: nc.name.trim(), limit: num(nc.limit) }));
-                setNc({ name: "", limit: "" }); setShowCard(false); say("Card added.");
+                mutate((d) => d.cards.push({
+                  id: uid(), name: nc.name.trim(), limit: num(nc.limit),
+                  cycleDate: nc.cycleDate, dueDate: nc.dueDate,
+                }));
+                setNc({ name: "", limit: "", cycleDate: TODAY(), dueDate: addDays(TODAY(), 20) });
+                setShowCard(false); say("Card added.");
               }}>Add card</button>
             </div>
           </Modal>
@@ -1772,6 +2050,66 @@ function Cards({ A, data, mutate, say }) {
           ))}
       </div>
     </>
+  );
+}
+
+/* ---------- ALERTS ---------- */
+function Alerts({ A, setTab }) {
+  const when = (a) => {
+    if (a.days < 0) return `${Math.abs(a.days)}d late`;
+    if (a.days === 0) return "Today";
+    if (a.days === 1) return "Tomorrow";
+    return `In ${a.days}d`;
+  };
+  const goto = (a) => setTab(
+    a.kind === "Card bill" ? "cards" : a.kind === "Auto-payment" ? "auto"
+      : a.kind === "Budget" ? "budget" : a.kind === "Housekeeping" ? "backup"
+        : a.id.startsWith("emi") ? "emi" : "shared"
+  );
+
+  return (
+    <div className="ml-page">
+      <StatRow>
+        <Stat raw label="Needs attention" value={String(A.alerts.filter((a) => a.level !== "later").length)}
+          tone={A.urgent > 0 ? "debit" : null} note="due soon or already late" />
+        <Stat label="Falling due" value={fmt0(A.alerts.reduce((s, a) => s + num(a.amount), 0))}
+          note="cards and auto-payments ahead" />
+      </StatRow>
+
+      <div className="ml-card ml-w6">
+        <div className="ml-eyebrow">What's coming</div>
+        <div className="ml-sub" style={{ marginTop: 4, marginBottom: 6 }}>
+          Card bills appear once they're within twelve days, so a reminder always lands well before the five-day mark.
+        </div>
+        {A.alerts.length === 0 ? (
+          <div className="ml-empty">Nothing needs you right now.</div>
+        ) : A.alerts.map((a) => (
+          <div className="ml-alert" key={a.id}>
+            <span className={"ml-adot " + a.level} />
+            <div style={{ minWidth: 0 }}>
+              <div className="ml-atitle">{a.title}</div>
+              <div className="ml-ameta">{a.kind} · {a.meta}</div>
+              <button className="ml-btn ghost sm" style={{ marginTop: 7 }} onClick={() => goto(a)}>Open</button>
+            </div>
+            <div className="ml-awhen">
+              <b style={{ color: a.level === "now" ? "var(--debit)" : a.level === "soon" ? "var(--amber)" : "var(--soft)" }}>
+                {when(a)}
+              </b>
+              <span className="ml-sub ml-num">{fmtDate(a.date)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {A.tips.length > 0 && (
+        <div className="ml-card ml-w6">
+          <div className="ml-eyebrow">Worth thinking about</div>
+          {A.tips.map(([t, body], i) => (
+            <div className="ml-tip" key={i}><b>{t}</b><p>{body}</p></div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
