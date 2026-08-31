@@ -983,6 +983,8 @@ export default function MoneyLedger() {
   const [toast, setToast] = useState("");
   const [view, setView] = useState("total");
   const [jump, setJump] = useState(null);   // { tab, id } — opened from Overview
+  const [transferCue, setTransferCue] = useState(0);
+  const startTransfer = () => { setTransferCue((c) => c + 1); setTab("accounts"); };
   const [moreOpen, setMoreOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [theme, setTheme] = useState(() => {
@@ -1398,9 +1400,10 @@ export default function MoneyLedger() {
         {tab === "log" && <QuickLog A={A} data={data} mutate={mutate} say={say} setTab={setTab} />}
         {tab === "overview" && (
           <Overview A={A} data={data} posted={posted} setTab={setTab}
-            open={(t, id) => { setJump({ tab: t, id }); setTab(t); }} />
+            open={(t, id) => { setJump({ tab: t, id }); setTab(t); }}
+            onTransfer={startTransfer} />
         )}
-        {tab === "accounts" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} jump={jump && jump.tab === "accounts" ? jump.id : null} />}
+        {tab === "accounts" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} jump={jump && jump.tab === "accounts" ? jump.id : null} transferCue={transferCue} />}
         {tab === "cards" && <Cards A={A} data={data} mutate={mutate} say={say} jump={jump && jump.tab === "cards" ? jump.id : null} />}
         {tab === "alerts" && <Alerts A={A} setTab={setTab} />}
         {tab === "shared" && <SharedPanel A={A} data={data} mutate={mutate} say={say} />}
@@ -1460,7 +1463,7 @@ export default function MoneyLedger() {
 }
 
 /* What sits on the phone's bottom bar; everything else lives behind More. */
-const BOTTOM_NAV = [["overview", "Home"], ["cards", "Cards"], ["alerts", "Alerts"]];
+const BOTTOM_NAV = [["overview", "Home"], ["accounts", "Accounts"], ["cards", "Cards"], ["alerts", "Alerts"]];
 
 const TAB_HINTS = {
   log: "log anything, anywhere",
@@ -1805,7 +1808,7 @@ function Sparkline({ series, labels, height = 130, onPointClick }) {
 }
 
 /* ---------- OVERVIEW ---------- */
-function Overview({ A, data, posted, setTab, open }) {
+function Overview({ A, data, posted, setTab, open, onTransfer }) {
   const [logOpen, setLogOpen] = useState(false);
   const [month, setMonth] = useState("");
   const catMax = Math.max(1, ...A.catRows.map((c) => c[1]));
@@ -1826,13 +1829,13 @@ function Overview({ A, data, posted, setTab, open }) {
 
       <div className="ml-qa ml-w6">
         {[
-          ["log", "Add spend", "log"],
-          ["accounts", "Transfer", "swap"],
-          ["shared", "Split bill", "shared"],
-          ["cards", "Pay a bill", "cards"],
-          ["alerts", "Reminders", "alerts"],
-        ].map(([t, label, icon]) => (
-          <button key={label} className="ml-qabtn" onClick={() => setTab(t)}>
+          ["log", "Add spend", "log", () => setTab("log")],
+          ["accounts", "Transfer", "swap", onTransfer],
+          ["shared", "Split bill", "shared", () => setTab("shared")],
+          ["cards", "Pay a bill", "cards", () => setTab("cards")],
+          ["alerts", "Reminders", "alerts", () => setTab("alerts")],
+        ].map(([t, label, icon, act]) => (
+          <button key={label} className="ml-qabtn" onClick={act}>
             <span className="ml-qaic"><NavIcon id={icon} /></span>
             {label}
           </button>
@@ -1970,7 +1973,7 @@ function Overview({ A, data, posted, setTab, open }) {
 }
 
 /* ---------- SAVINGS ---------- */
-function Savings({ A, data, mutate, say, posted, effRate, jump }) {
+function Savings({ A, data, mutate, say, posted, effRate, jump, transferCue }) {
   const [f, setF] = useState({ name: "", type: "", interest: true, balance: "" });
   const [mv, setMv] = useState({
     mode: "spend", accountId: "", toId: "", amount: "",
@@ -1982,6 +1985,11 @@ function Savings({ A, data, mutate, say, posted, effRate, jump }) {
   const [entryOpen, setEntryOpen] = useState(false);
   const [month, setMonth] = useState("");
   useEffect(() => { if (jump) setFocus(jump); }, [jump]);
+  useEffect(() => {
+    if (!transferCue) return;
+    setMv((m) => ({ ...m, mode: "transfer" }));
+    setEntryOpen(true);
+  }, [transferCue]);
   const [rowEdit, setRowEdit] = useState(null);
   const [ef, setEf] = useState({ name: "", type: "", balance: "" });
   const todayPosted = posted.reduce((s, p) => s + p.amount, 0);
