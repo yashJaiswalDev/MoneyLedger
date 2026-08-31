@@ -11,255 +11,384 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap');
 
+/* ============================================================
+   1. DESIGN TOKENS
+   Light-first neobank palette. Depth comes from layered soft
+   shadows, never borders. One ink accent, pastel data hues.
+   ============================================================ */
 .ml-root{
-  --paper:#E7E5DC; --sheet:#FCFBF8; --ink:#1A1D24; --soft:#6E7280;
-  --rule:#D6D2C6; --rule-soft:#E8E4DA; --field:#FFFFFF; --body:#3D424C;
-  --ctl:40px; --ctlpad:8px 10px; --ctlfont:16px;
-  --credit:#1B6B54; --debit:#A63A2A; --stamp:#27408B; --amber:#8F6212;
-  color-scheme:light;
-  background:var(--paper); color:var(--ink);
-  font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
-  font-size:15px; line-height:1.45; min-height:100vh; min-height:100dvh;
-  -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; text-size-adjust:100%;
-  -webkit-tap-highlight-color:transparent; overscroll-behavior-y:contain;
-}
-.ml-root *{box-sizing:border-box;}
-.ml-root button{font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation;}
-.ml-root input,.ml-root select,.ml-root textarea{font-family:inherit;font-size:var(--ctlfont);
-  -webkit-appearance:none;appearance:none;border-radius:2px;max-width:100%;}
-.ml-root :focus-visible{outline:2px solid var(--stamp);outline-offset:2px;}
+  --ground:#F6F7F9; --card:#FFFFFF; --raise:#FFFFFF; --field:#F2F4F7; --sunk:#F8F9FB;
+  --ink:#0D0F14; --soft:#8A9099; --body:#4E555F; --faint:#B9BEC6;
+  --line:#EEF0F3; --line-soft:#F4F5F7;
+  --accent:#0D0F14; --accent-ink:#FFFFFF;
+  --brand:#1B6EF3; --brand-soft:#E8F0FE;
+  --credit:#1B9C5A; --credit-soft:#E4F5EC;
+  --debit:#E0563F; --debit-soft:#FCEBE7;
+  --stamp:#6544E0; --stamp-soft:#EEEAFD;
+  --amber:#D08700; --amber-soft:#FDF3DF;
+  --ink-hover:#000000; --soft-hover:#F2F4F7;
 
-/* One switch: every surface, rule and figure below reads from these. */
+  --r-xl:26px; --r:20px; --r-sm:14px; --r-xs:10px;
+  --sh-1:0 1px 2px rgba(13,15,20,.04);
+  --sh-2:0 2px 6px rgba(13,15,20,.04), 0 10px 30px rgba(13,15,20,.04);
+  --sh-3:0 4px 12px rgba(13,15,20,.06), 0 18px 44px rgba(13,15,20,.07);
+  --sh-float:0 6px 16px rgba(13,15,20,.08), 0 20px 50px rgba(13,15,20,.10);
+
+  --ctl:48px; --ctlpad:13px 16px; --ctlfont:16px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --font:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-label:'Archivo',sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+
+  background:var(--ground); color:var(--ink); font-family:var(--font);
+  font-size:15px; line-height:1.5; min-height:100vh; min-height:100dvh;
+  -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  -webkit-tap-highlight-color:transparent; overscroll-behavior-y:contain; color-scheme:light;
+}
 .ml-root[data-theme="dark"]{
-  --paper:#13161B; --sheet:#1B1F26; --ink:#E9E7E1; --soft:#98A0AC;
-  --rule:#2F343D; --rule-soft:#242932; --field:#20252D; --body:#C2C8D2;
-  --credit:#4FBE99; --debit:#EC7C67; --stamp:#8AA0F0; --amber:#D8A74A;
+  --ground:#08090B; --card:#111318; --raise:#161920; --field:#181B21; --sunk:#0D0F13;
+  --ink:#F7F8FA; --soft:#7E858F; --body:#C2C7CF; --faint:#5A6069;
+  --line:#1C1F26; --line-soft:#15181D;
+  --accent:#FFFFFF; --accent-ink:#0D0F14;
+  --brand:#5B9CFF; --brand-soft:#132339;
+  --credit:#4ECB84; --credit-soft:#12291D;
+  --debit:#FF8067; --debit-soft:#2E1A16;
+  --stamp:#A48BFF; --stamp-soft:#1E1934;
+  --amber:#E8B44C; --amber-soft:#2C2312;
+  --ink-hover:#E8EAED; --soft-hover:#1A1D23;
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 2px 8px rgba(0,0,0,.45);
+  --sh-3:0 8px 28px rgba(0,0,0,.5);
+  --sh-float:0 10px 40px rgba(0,0,0,.6);
   color-scheme:dark;
 }
-.ml-root[data-theme="dark"] .ml-face{filter:saturate(1.08) brightness(1.2);}
-.ml-root[data-theme="dark"] .ml-toast{box-shadow:0 6px 20px rgba(0,0,0,.55);}
-.ml-root[data-theme="dark"] .ml-facebar{background:rgba(255,255,255,.3);}
-.ml-root,.ml-card,.ml-in,.ml-ta,.ml-seg button,.ml-btn,.ml-face,.ml-top{
-  transition:background-color .18s ease,color .18s ease,border-color .18s ease;}
+@media(min-width:900px){ .ml-root{--ctl:42px; --ctlpad:10px 14px; --ctlfont:14.5px;} }
 
-.ml-num{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
-.ml-eyebrow{font-family:'Archivo',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);}
-.ml-h{font-family:'Archivo',sans-serif;font-weight:700;letter-spacing:-.01em;}
+.ml-root *{box-sizing:border-box;}
+.ml-root button{font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;
+  touch-action:manipulation;transition:transform .16s var(--ease), background .16s var(--ease), box-shadow .16s var(--ease);}
+.ml-root button:active{transform:scale(.97);}
+.ml-root input,.ml-root textarea{font-family:inherit;font-size:var(--ctlfont);
+  -webkit-appearance:none;appearance:none;border-radius:var(--r-sm);max-width:100%;}
+.ml-root :focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.ml-num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+.ml-eyebrow{font-family:var(--font-label);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);}
+.ml-h{font-family:var(--font-label);font-weight:700;letter-spacing:-.01em;}
+.ml-sub{font-size:13px;color:var(--soft);line-height:1.45;}
+.ml-hr{border:0;border-top:1px solid var(--line);margin:18px 0;}
+.ml-flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.ml-between{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.ml-credit{color:var(--credit);} .ml-debit{color:var(--debit);} .ml-invest{color:var(--stamp);}
+@keyframes mlfade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.ml-page,.ml-card{animation:mlfade .32s var(--ease) both;}
 
-/* ---- shell ---- */
-.ml-wrap{max-width:1060px;margin:0 auto;
-  padding:0 calc(14px + env(safe-area-inset-right,0px)) calc(72px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));}
-.ml-top{border-bottom:1px solid var(--rule);background:var(--paper);position:sticky;top:0;z-index:20;}
-.ml-topin{max-width:1060px;margin:0 auto;
-  padding:calc(14px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) 0 calc(14px + env(safe-area-inset-left,0px));}
+/* ============================================================
+   2. LAYOUT SHELL — floating pill sidebar / floating bottom bar
+   ============================================================ */
+.ml-shell{display:flex;min-height:100dvh;}
+.ml-side{display:none;}
+.ml-main{flex:1;min-width:0;}
+.ml-wrap{max-width:1120px;margin:0 auto;
+  padding:0 calc(18px + env(safe-area-inset-right,0px)) calc(122px + env(safe-area-inset-bottom,0px)) calc(18px + env(safe-area-inset-left,0px));}
+.ml-top{background:var(--ground);position:sticky;top:0;z-index:20;}
+.ml-topin{max-width:1120px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 0;}
 .ml-headline{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.ml-brandrow{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:2px;}
-.ml-brand{font-family:'Archivo',sans-serif;font-weight:700;font-size:19px;letter-spacing:.04em;text-transform:uppercase;line-height:1;}
-.ml-brand span{color:var(--stamp);}
-.ml-brandsub{font-size:11px;color:var(--soft);margin-top:4px;letter-spacing:.02em;}
-.ml-nw{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
-.ml-theme{width:36px;height:36px;min-height:36px;flex:0 0 auto;border:1px solid var(--rule);border-radius:2px;
-  background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;}
-.ml-theme:hover{background:var(--sheet);border-color:var(--ink);}
-.ml-nwv{font-size:22px;font-weight:600;line-height:1.1;}
-.ml-tabs{display:flex;gap:2px;margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-.ml-tabs::-webkit-scrollbar{display:none;}
-.ml-tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;white-space:nowrap;
-  font-family:'Archivo',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--soft);
-  min-height:42px;flex:0 0 auto;}
-.ml-tab:hover{color:var(--ink);}
-.ml-tab[data-on="1"]{color:var(--ink);border-bottom-color:var(--stamp);}
+.ml-brand{font-weight:800;font-size:18px;letter-spacing:-.03em;}
+.ml-brand span{color:var(--soft);font-weight:600;}
+.ml-brandsub{font-size:12.5px;color:var(--soft);margin-top:2px;}
 
-/* ---- cards ---- */
-.ml-card{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;padding:14px;margin-top:12px;}
-.ml-card>.ml-eyebrow:first-child{display:block;margin-bottom:10px;}
-.ml-grid{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr;}
-.ml-page{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr;}
+/* hero: balance, then quick actions — nothing else competes */
+.ml-brandrow{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:22px 0 4px;}
+.ml-nw{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;}
+.ml-nwv{font-size:42px;font-weight:800;letter-spacing:-.045em;line-height:1;}
+@media(min-width:680px){.ml-nwv{font-size:50px;}}
+.ml-theme{width:42px;height:42px;flex:0 0 auto;border:0;border-radius:50%;
+  background:var(--card);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--sh-2);}
+.ml-theme:hover{background:var(--soft-hover);}
+.ml-tabsel{display:none;}
+
+/* quick actions strip */
+.ml-qa{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin-top:18px;padding-bottom:2px;}
+.ml-qa::-webkit-scrollbar{display:none;}
+.ml-qabtn{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px;
+  border:0;background:none;color:var(--ink);font-family:inherit;font-size:11.5px;font-weight:600;}
+.ml-qaic{width:52px;height:52px;border-radius:var(--r-sm);background:var(--card);box-shadow:var(--sh-2);
+  display:flex;align-items:center;justify-content:center;color:var(--ink);}
+.ml-qabtn:hover .ml-qaic{background:var(--soft-hover);}
+
+/* floating bottom bar (phones) */
+.ml-bnav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  z-index:50;display:flex;align-items:center;gap:2px;padding:8px;width:calc(100% - 32px);max-width:440px;
+  background:var(--card);border-radius:999px;box-shadow:var(--sh-float);}
+.ml-bitem{position:relative;flex:1;min-width:0;border:0;background:none;color:var(--soft);border-radius:999px;
+  padding:8px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-family:inherit;font-size:10px;font-weight:600;letter-spacing:-.01em;}
+.ml-bitem[data-on="1"]{color:var(--ink);background:var(--field);}
+.ml-bcount{position:absolute;top:2px;right:calc(50% - 20px);min-width:16px;height:16px;padding:0 4px;
+  border-radius:999px;background:var(--debit);color:#fff;font-size:9.5px;font-weight:700;line-height:16px;text-align:center;}
+.ml-bfab{flex:0 0 auto;width:50px;height:50px;border:0;border-radius:50%;
+  background:var(--accent);color:var(--accent-ink);box-shadow:var(--sh-2);
+  display:flex;align-items:center;justify-content:center;}
+
+@media(min-width:1000px){
+  .ml-bnav{display:none;}
+  .ml-wrap{padding-bottom:64px;}
+  .ml-side{display:flex;flex-direction:column;gap:4px;width:76px;flex:0 0 76px;padding:20px 12px;
+    position:sticky;top:0;height:100dvh;transition:width .22s var(--ease);}
+  .ml-side:hover{width:238px;}
+  .ml-sidepill{display:flex;flex-direction:column;gap:4px;padding:12px 10px;background:var(--card);
+    border-radius:var(--r-xl);box-shadow:var(--sh-3);height:100%;overflow:hidden;}
+  .ml-sidebrand{font-weight:800;font-size:15px;letter-spacing:-.03em;padding:6px 10px 14px;white-space:nowrap;overflow:hidden;}
+  .ml-sidebrand span{color:var(--soft);opacity:0;transition:opacity .18s var(--ease);}
+  .ml-side:hover .ml-sidebrand span{opacity:1;}
+  .ml-sidelink{display:flex;align-items:center;gap:12px;width:100%;padding:11px 10px;border:0;border-radius:var(--r-sm);
+    background:none;color:var(--soft);font-family:inherit;font-size:13.5px;font-weight:600;text-align:left;white-space:nowrap;}
+  .ml-sidelink:hover{background:var(--soft-hover);color:var(--ink);}
+  .ml-sidelink[data-on="1"]{background:var(--field);color:var(--ink);}
+  .ml-sidelink span{opacity:0;transition:opacity .18s var(--ease);overflow:hidden;}
+  .ml-side:hover .ml-sidelink span{opacity:1;}
+  .ml-sidehint{display:none;}
+  .ml-sidefoot{margin-top:auto;padding-top:14px;display:flex;gap:8px;}
+  .ml-top,.ml-topin{padding-left:0;padding-right:0;}
+  .ml-wrap,.ml-topin{max-width:none;padding-left:4px;padding-right:26px;}
+  .ml-top{padding-top:24px;}
+}
+
+/* ---- surfaces ---- */
+.ml-card{background:var(--card);border:0;border-radius:var(--r);padding:20px;margin-top:14px;width:100%;box-shadow:var(--sh-2);}
+.ml-card>.ml-eyebrow:first-child{display:block;margin-bottom:14px;}
+.ml-grid{display:grid;gap:14px;margin-top:14px;grid-template-columns:1fr;}
+.ml-grid>*{min-width:0;} .ml-grid>.ml-card{margin-top:0;}
+.ml-page{display:grid;gap:14px;margin-top:14px;grid-template-columns:1fr;}
 .ml-page>*{min-width:0;margin-top:0;}
 @media(min-width:680px){
+  .ml-2{grid-template-columns:repeat(2,1fr);}
+  .ml-3{grid-template-columns:repeat(3,1fr);}
   .ml-page{grid-template-columns:repeat(6,1fr);}
   .ml-page>.ml-w6{grid-column:span 6;}
   .ml-page>.ml-w3{grid-column:span 3;}
   .ml-page>.ml-w2{grid-column:span 2;}
 }
-.ml-grid>*{min-width:0;}
-.ml-grid>.ml-card{margin-top:0;}
-.ml-card{width:100%;}
-.ml-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;margin-top:12px;overflow:hidden;}
-@media(min-width:680px){
-  .ml-stats{grid-template-columns:repeat(var(--cols,4),1fr);}
-  .ml-2{grid-template-columns:repeat(2,1fr);}
-  .ml-3{grid-template-columns:repeat(3,1fr);}
-}
-.ml-stat{background:var(--sheet);padding:11px 12px;}
-.ml-statv{font-size:17px;font-weight:600;margin-top:5px;line-height:1.2;}
-.ml-statn{font-size:10.5px;color:var(--soft);margin-top:2px;}
+.ml-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px;}
+@media(min-width:680px){.ml-stats{grid-template-columns:repeat(var(--cols,4),1fr);}}
+.ml-stat{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh-2);}
+.ml-statv{font-size:25px;font-weight:800;letter-spacing:-.035em;margin-top:8px;line-height:1.05;}
+.ml-statn{font-size:11.5px;color:var(--soft);margin-top:6px;}
 
-/* ---- ledger rows ---- */
-.ml-lhead,.ml-lrow{display:grid;grid-template-columns:minmax(0,1fr) 100px 100px 100px 26px;gap:8px;align-items:center;}
-.ml-lhead{padding:0 0 6px;border-bottom:1px solid var(--rule);}
-.ml-lhead div{font-family:'Archivo',sans-serif;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);}
-.ml-lhead div:not(:first-child){text-align:right;}
-.ml-lrow{padding:9px 0;border-bottom:1px solid var(--rule-soft);}
+/* ---- 3. SMART LOGO ---- */
+.ml-logo{flex:0 0 auto;width:42px;height:42px;border-radius:var(--r-xs);display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:14px;letter-spacing:-.02em;overflow:hidden;}
+.ml-logo.sm{width:34px;height:34px;border-radius:9px;}
+.ml-logo svg{width:19px;height:19px;}
+.ml-logo.sm svg{width:16px;height:16px;}
+
+/* ---- rows ---- */
+.ml-lhead{display:none;}
+.ml-lrow{display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid var(--line-soft);}
 .ml-lrow:last-child{border-bottom:0;}
-.ml-ltitle{font-weight:500;font-size:14px;overflow-wrap:anywhere;}
-.ml-lmeta{font-size:11px;color:var(--soft);margin-top:2px;overflow-wrap:anywhere;}
-.ml-lcell{text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;}
-.ml-debit{color:var(--debit);} .ml-credit{color:var(--credit);} .ml-invest{color:var(--stamp);}
-.ml-x{background:none;border:0;color:var(--soft);font-size:17px;line-height:1;padding:2px 4px;border-radius:2px;
-  min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;}
-.ml-x:hover{color:var(--debit);background:var(--paper);}
-.ml-eye{position:relative;}
-@media(max-width:700px){
-  .ml-lhead{display:none;}
-  .ml-lrow{grid-template-columns:minmax(0,1fr) 26px;row-gap:3px;}
-  .ml-lmain{grid-column:1;} .ml-x{grid-column:2;grid-row:1;}
-  .ml-lcell{grid-column:1/-1;display:flex;justify-content:space-between;text-align:left;}
-  .ml-lcell:empty{display:none;}
-  .ml-lcell::before{content:attr(data-l);font-family:'Archivo',sans-serif;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);}
-}
+.ml-lmain{flex:1;min-width:0;}
+.ml-ltitle{font-weight:600;font-size:14.5px;letter-spacing:-.01em;overflow-wrap:anywhere;}
+.ml-lmeta{font-size:12px;color:var(--soft);margin-top:2px;overflow-wrap:anywhere;}
+.ml-lcell{text-align:right;font-variant-numeric:tabular-nums;font-size:14.5px;font-weight:700;letter-spacing:-.02em;flex:0 0 auto;}
+.ml-lcell:empty{display:none;}
+.ml-rowacts{display:flex;gap:2px;justify-content:flex-end;flex:0 0 auto;opacity:.55;}
+.ml-lrow:hover .ml-rowacts{opacity:1;}
+.ml-x{background:none;border:0;color:var(--soft);font-size:16px;line-height:1;padding:2px 4px;border-radius:8px;
+  min-width:30px;min-height:30px;display:inline-flex;align-items:center;justify-content:center;}
+.ml-x:hover{color:var(--debit);background:var(--soft-hover);}
 
 /* ---- forms ---- */
-.ml-form{display:grid;gap:9px;grid-template-columns:1fr;}
+.ml-form{display:grid;gap:14px;grid-template-columns:1fr;}
 @media(min-width:620px){.ml-form{grid-template-columns:repeat(2,1fr);}.ml-span{grid-column:1/-1;}}
-.ml-f label{display:block;font-family:'Archivo',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--soft);margin-bottom:3px;}
-.ml-in{width:100%;padding:var(--ctlpad);border:1px solid var(--rule);border-radius:2px;background:var(--field);color:var(--ink);min-height:var(--ctl);line-height:1.25;font-size:var(--ctlfont);}
-.ml-in:focus{border-color:var(--stamp);}
-select.ml-in{-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--soft) 50%),linear-gradient(135deg,var(--soft) 50%,transparent 50%);background-position:calc(100% - 15px) 51%,calc(100% - 10px) 51%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px;}
-.ml-btn{padding:8px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:2px;
-  font-family:'Archivo',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+.ml-f label{display:block;font-size:12px;font-weight:600;color:var(--soft);margin-bottom:7px;}
+.ml-in{width:100%;padding:var(--ctlpad);border:1.5px solid transparent;border-radius:var(--r-sm);
+  background:var(--field);color:var(--ink);min-height:var(--ctl);line-height:1.25;font-size:var(--ctlfont);
+  transition:border-color .16s var(--ease), background .16s var(--ease);}
+.ml-in:focus{border-color:var(--brand);background:var(--card);}
+.ml-btn{padding:12px 22px;border:0;background:var(--accent);color:var(--accent-ink);border-radius:999px;
+  font-family:inherit;font-size:14px;font-weight:700;letter-spacing:-.01em;box-shadow:var(--sh-1);
   min-height:var(--ctl);display:inline-flex;align-items:center;justify-content:center;text-align:center;}
-.ml-btn:hover{background:#000;}
-.ml-btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule);}
-.ml-btn.ghost:hover{background:var(--paper);border-color:var(--ink);}
-.ml-btn.danger{background:transparent;color:var(--debit);border-color:var(--debit);}
-.ml-btn.danger:hover{background:var(--debit);color:var(--sheet);}
-.ml-btn.sm{padding:4px 10px;font-size:10px;min-height:30px;}
-.ml-seg{display:inline-flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden;}
-.ml-seg button{padding:8px 16px;border:0;background:var(--field);color:var(--soft);font-family:'Archivo',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;min-height:var(--ctl);}
-.ml-seg button[data-on="1"]{background:var(--ink);color:var(--paper);}
+.ml-btn:hover{background:var(--ink-hover);}
+.ml-btn.ghost{background:var(--field);color:var(--ink);box-shadow:none;}
+.ml-btn.ghost:hover{background:var(--soft-hover);}
+.ml-btn.danger{background:var(--debit-soft);color:var(--debit);box-shadow:none;}
+.ml-btn.danger:hover{background:var(--debit);color:#fff;}
+.ml-btn.sm{padding:8px 16px;font-size:12.5px;min-height:36px;}
+.ml-seg{display:inline-flex;border-radius:999px;overflow:hidden;background:var(--field);padding:4px;gap:3px;}
+.ml-seg button{padding:8px 16px;border:0;background:none;color:var(--soft);border-radius:999px;
+  font-family:inherit;font-size:13px;font-weight:600;min-height:36px;}
+.ml-seg button[data-on="1"]{background:var(--card);color:var(--ink);box-shadow:var(--sh-1);}
+.ml-ta{width:100%;min-height:112px;padding:14px;border:1.5px solid transparent;border-radius:var(--r-sm);
+  font-family:ui-monospace,'SF Mono',monospace;font-size:13.5px;line-height:1.5;
+  background:var(--field);color:var(--ink);word-break:break-all;}
 
-/* ---- stamp (signature) ---- */
-.ml-stamp{border:2px double var(--stamp);color:var(--stamp);border-radius:3px;padding:9px 14px;text-align:center;
-  transform:rotate(-2.2deg);display:inline-block;background:transparent;animation:mlpress .45s cubic-bezier(.2,1.4,.4,1);}
-@keyframes mlpress{from{transform:rotate(-9deg) scale(1.5);opacity:0;}to{transform:rotate(-2.2deg) scale(1);opacity:1;}}
-.ml-stampt{font-family:'Archivo',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;}
-.ml-stampv{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;margin:2px 0;}
-.ml-stampd{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;}
-
-/* ---- misc ---- */
-.ml-bar{height:7px;background:var(--rule-soft);border-radius:1px;overflow:hidden;}
-.ml-bar i{display:block;height:100%;background:var(--stamp);}
-.ml-pill{display:inline-block;font-family:'Archivo',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-  border:1px solid var(--rule);border-radius:2px;padding:2px 6px;color:var(--soft);}
-.ml-pill.on{border-color:var(--credit);color:var(--credit);}
-.ml-pill.off{border-color:var(--amber);color:var(--amber);}
-.ml-empty{border:1px dashed var(--rule);border-radius:3px;padding:20px;text-align:center;color:var(--soft);font-size:13px;}
-.ml-tip{border-left:2px solid var(--stamp);padding:2px 0 2px 12px;margin-bottom:14px;}
-.ml-tip b{font-family:'Archivo',sans-serif;font-size:12px;letter-spacing:.02em;display:block;margin-bottom:2px;}
+/* ---- pills, bars ---- */
+.ml-pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;border:0;border-radius:999px;
+  padding:4px 11px;color:var(--soft);background:var(--field);}
+.ml-pill.on{background:var(--credit-soft);color:var(--credit);}
+.ml-pill.off{background:var(--amber-soft);color:var(--amber);}
+.ml-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.ml-bar{height:8px;background:var(--field);border-radius:999px;overflow:hidden;}
+.ml-bar i{display:block;height:100%;border-radius:999px;background:var(--ink);transition:width .5s var(--ease);}
+.ml-empty{border:0;background:var(--sunk);border-radius:var(--r-sm);padding:28px 20px;text-align:center;
+  color:var(--soft);font-size:13.5px;}
+.ml-tip{padding:0 0 0 2px;margin-bottom:18px;}
+.ml-tip b{font-size:14px;font-weight:700;letter-spacing:-.01em;display:block;margin-bottom:4px;}
 .ml-tip p{margin:0;font-size:13px;color:var(--body);}
-.ml-toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);
-  padding:9px 16px;border-radius:2px;font-size:13px;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:92vw;}
-.ml-sub{font-size:12px;color:var(--soft);}
-.ml-hr{border:0;border-top:1px solid var(--rule-soft);margin:14px 0;}
-.ml-flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-.ml-between{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-.ml-ta{width:100%;min-height:100px;padding:9px;border:1px solid var(--rule);border-radius:2px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:16px;line-height:1.4;background:var(--field);color:var(--ink);word-break:break-all;}
-/* ---- alerts ---- */
-.ml-alert{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--rule-soft);}
-.ml-alert:last-child{border-bottom:0;}
-.ml-adot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--soft);}
-.ml-adot.now{background:var(--debit);}
-.ml-adot.soon{background:var(--amber);}
-.ml-adot.ok{background:var(--credit);}
-.ml-atitle{font-weight:600;font-size:14px;}
-.ml-ameta{font-size:12px;color:var(--soft);margin-top:2px;}
-.ml-awhen{margin-left:auto;text-align:right;flex:0 0 auto;}
-.ml-awhen b{display:block;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;}
-.ml-tabbadge{display:inline-block;min-width:16px;padding:0 4px;margin-left:5px;border-radius:8px;
-  background:var(--debit);color:var(--sheet);font-family:'IBM Plex Mono',monospace;font-size:9.5px;line-height:16px;text-align:center;}
+.ml-toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--ink);color:var(--ground);padding:13px 22px;border-radius:999px;font-size:13.5px;font-weight:600;
+  z-index:60;box-shadow:var(--sh-float);max-width:92vw;text-align:center;animation:mlfade .3s var(--ease);}
+@media(min-width:1000px){.ml-toast{bottom:28px;}}
+.ml-filter{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
 
-/* ---- modal ---- */
-.ml-scrim{position:fixed;inset:0;z-index:80;background:rgba(20,22,27,.45);display:flex;
-  align-items:center;justify-content:center;padding:16px;}
-.ml-modal{width:100%;max-width:440px;max-height:82vh;display:flex;flex-direction:column;
-  background:var(--sheet);border:1px solid var(--rule);border-radius:4px;box-shadow:0 20px 50px rgba(0,0,0,.28);}
-.ml-modalhead{display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:12px 14px;border-bottom:1px solid var(--rule);}
-.ml-modalbody{padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+/* ---- 4. ACCORDION (progressive disclosure) ---- */
+.ml-acc{border-radius:var(--r);background:var(--card);box-shadow:var(--sh-2);margin-top:12px;overflow:hidden;}
+.ml-acchead{display:flex;align-items:center;gap:13px;width:100%;padding:17px 18px;border:0;background:none;
+  color:var(--ink);text-align:left;font-family:inherit;}
+.ml-acchead:hover{background:var(--soft-hover);}
+.ml-accttl{flex:1;min-width:0;}
+.ml-accttl b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.01em;}
+.ml-accttl span{display:block;font-size:12.5px;color:var(--soft);margin-top:2px;}
+.ml-accbody{padding:0 18px 18px;animation:mlfade .28s var(--ease);}
 
-/* ---- custom select ---- */
-.ml-pick{position:relative;width:100%;}
-.ml-pickbtn{width:100%;min-height:var(--ctl);padding:var(--ctlpad);padding-right:30px;border:1px solid var(--rule);border-radius:2px;
-  background:var(--field);color:var(--ink);text-align:left;font-size:var(--ctlfont);line-height:1.25;
-  display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.ml-pickbtn:hover{border-color:var(--soft);}
-.ml-pick.open .ml-pickbtn{border-color:var(--stamp);}
-.ml-picklabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ml-chev{position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:1.5px solid var(--soft);
-  border-bottom:1.5px solid var(--soft);transform:translateY(-70%) rotate(45deg);pointer-events:none;}
-.ml-pick.open .ml-chev{transform:translateY(-30%) rotate(-135deg);border-color:var(--stamp);}
-.ml-pickmenu{position:absolute;z-index:40;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow-y:auto;
-  -webkit-overflow-scrolling:touch;background:var(--sheet);border:1px solid var(--rule);border-radius:3px;
-  box-shadow:0 10px 28px rgba(0,0,0,.16);padding:4px;}
-.ml-pickopt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;
-  padding:9px 10px;border:0;background:none;color:var(--ink);border-radius:2px;font-size:14px;min-height:40px;}
-.ml-pickopt:hover{background:var(--paper);}
-.ml-pickopt.on{background:var(--paper);font-weight:600;}
-.ml-pickopt.on::after{content:"✓";position:absolute;right:14px;color:var(--stamp);}
-.ml-pickhint{font-size:11px;color:var(--soft);font-weight:400;}
-.ml-pick.sm .ml-pickbtn{min-height:34px;padding:5px 26px 5px 8px;font-size:12px;border-color:transparent;background:transparent;}
-.ml-pick.sm .ml-chev{right:8px;width:6px;height:6px;}
-.ml-pick.sm .ml-pickmenu{left:auto;right:0;min-width:210px;}
-
-/* ---- custom date field ---- */
-.ml-cal{position:absolute;z-index:40;top:calc(100% + 4px);left:0;width:280px;max-width:calc(100vw - 40px);
-  background:var(--sheet);border:1px solid var(--rule);border-radius:3px;box-shadow:0 10px 28px rgba(0,0,0,.16);padding:10px;}
-.ml-calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.ml-calnav{width:30px;height:30px;min-height:30px;border:1px solid var(--rule);border-radius:2px;background:none;
-  color:var(--ink);display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
-.ml-calnav:hover{border-color:var(--ink);}
-.ml-calmon{font-family:'Archivo',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
-.ml-calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-.ml-caldow{font-family:'Archivo',sans-serif;font-size:9px;font-weight:600;letter-spacing:.06em;color:var(--soft);
-  text-align:center;padding:4px 0;text-transform:uppercase;}
-.ml-calday{aspect-ratio:1/1;min-height:32px;border:0;background:none;border-radius:2px;color:var(--ink);
-  font-family:'IBM Plex Mono',monospace;font-size:12.5px;display:flex;align-items:center;justify-content:center;}
-.ml-calday:hover{background:var(--paper);}
-.ml-calday.on{background:var(--ink);color:var(--paper);font-weight:600;}
-.ml-calday.today{box-shadow:inset 0 0 0 1px var(--stamp);}
-.ml-calday.mute{visibility:hidden;}
-.ml-calfoot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--rule-soft);}
+/* ---- stamp ---- */
+.ml-stamp{border:0;border-radius:var(--r);padding:18px 26px;text-align:center;display:inline-block;
+  background:var(--credit-soft);color:var(--credit);box-shadow:var(--sh-2);animation:mlfade .4s var(--ease);}
+.ml-stampt{font-size:11.5px;font-weight:600;opacity:.8;}
+.ml-stampv{font-size:28px;font-weight:800;margin:6px 0;letter-spacing:-.04em;}
+.ml-stampd{font-size:12px;font-weight:500;opacity:.75;}
 
 /* ---- wallet faces ---- */
-.ml-wallet{display:flex;gap:12px;margin-top:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;
-  scroll-snap-type:x mandatory;padding:2px 0 6px;scrollbar-width:none;}
+.ml-wallet{display:flex;gap:14px;margin-top:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scroll-snap-type:x mandatory;padding:2px 0 10px;scrollbar-width:none;}
 .ml-wallet::-webkit-scrollbar{display:none;}
-.ml-face{flex:0 0 62%;max-width:240px;scroll-snap-align:start;border:0;border-radius:10px;padding:11px 12px;
-  color:#fff;text-align:left;display:flex;flex-direction:column;justify-content:space-between;
-  min-height:110px;aspect-ratio:1.586/1;font-family:inherit;transition:box-shadow .15s ease;}
-.ml-face.on{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink);}
-@media(min-width:780px){
-  .ml-wallet{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));overflow:visible;}
-  .ml-face{flex:none;max-width:260px;}
+.ml-face{position:relative;overflow:hidden;flex:0 0 78%;max-width:290px;scroll-snap-align:start;border:0;
+  border-radius:var(--r);padding:20px;color:#fff;text-align:left;display:flex;flex-direction:column;
+  justify-content:space-between;min-height:158px;aspect-ratio:1.62/1;font-family:inherit;box-shadow:var(--sh-3);}
+.ml-face::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 12% 8%, rgba(255,255,255,.22), transparent 58%);}
+.ml-face.on{box-shadow:0 0 0 2.5px var(--brand), var(--sh-3);}
+@media(min-width:900px){
+  .ml-wallet{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));overflow:visible;}
+  .ml-face{flex:none;max-width:none;}
 }
-.ml-facetop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-.ml-facename{font-family:'Archivo',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;line-height:1.25;overflow-wrap:anywhere;}
-.ml-facesub{font-size:11px;opacity:.72;margin-top:3px;}
-.ml-chip{width:30px;height:22px;border-radius:4px;background:rgba(255,255,255,.26);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);flex:0 0 auto;position:relative;}
-.ml-chip::after{content:"";position:absolute;left:4px;right:4px;top:50%;height:1px;background:rgba(255,255,255,.4);}
-.ml-facebar{height:4px;border-radius:2px;background:rgba(255,255,255,.24);overflow:hidden;margin-top:10px;}
-.ml-facebar i{display:block;height:100%;background:rgba(255,255,255,.85);}
-.ml-facefoot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:10px;}
-.ml-facelab{font-family:'Archivo',sans-serif;font-size:8.5px;font-weight:600;letter-spacing:.14em;
-  text-transform:uppercase;opacity:.72;}
-.ml-faceval{font-size:13.5px;font-weight:600;margin-top:2px;}
-.ml-filter{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
-/* Desktop has no zoom-on-focus problem, so controls can tighten up there. */
-@media(min-width:780px){
-  .ml-root{--ctl:34px; --ctlpad:6px 9px; --ctlfont:14px;}
+.ml-facetop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;position:relative;z-index:1;}
+.ml-facename{font-size:13px;font-weight:700;letter-spacing:-.01em;line-height:1.3;overflow-wrap:anywhere;}
+.ml-facesub{font-size:11.5px;opacity:.78;margin-top:3px;}
+.ml-chip{width:32px;height:24px;border-radius:6px;flex:0 0 auto;position:relative;
+  background:linear-gradient(140deg,rgba(255,255,255,.55),rgba(255,255,255,.22));}
+.ml-chip::after{content:"";position:absolute;left:5px;right:5px;top:50%;height:1px;background:rgba(255,255,255,.4);}
+.ml-facebar{height:5px;border-radius:999px;background:rgba(255,255,255,.24);overflow:hidden;margin-top:12px;position:relative;z-index:1;}
+.ml-facebar i{display:block;height:100%;border-radius:999px;background:#fff;}
+.ml-facefoot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:12px;position:relative;z-index:1;}
+.ml-facelab{font-size:10px;font-weight:600;letter-spacing:.02em;opacity:.75;}
+.ml-faceval{font-size:17px;font-weight:800;margin-top:4px;letter-spacing:-.03em;}
+
+/* ---- drawer + modal ---- */
+.ml-scrim{position:fixed;inset:0;z-index:80;background:rgba(8,9,11,.42);display:flex;
+  align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(6px);animation:mlfade .2s var(--ease);}
+@media(min-width:680px){.ml-scrim{align-items:center;padding:18px;}}
+.ml-modal{width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;
+  background:var(--card);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:var(--sh-float);
+  animation:mlrise .34s var(--ease);}
+@keyframes mlrise{from{transform:translateY(18px);opacity:.6;}to{transform:none;opacity:1;}}
+@media(min-width:680px){.ml-modal{border-radius:var(--r-xl);}}
+.ml-modalhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:20px 22px 14px;}
+.ml-modalbody{padding:0 22px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* ---- select ---- */
+.ml-pick{position:relative;width:100%;}
+.ml-pickbtn{width:100%;min-height:var(--ctl);padding:var(--ctlpad);padding-right:38px;border:1.5px solid transparent;
+  border-radius:var(--r-sm);background:var(--field);color:var(--ink);text-align:left;font-size:var(--ctlfont);
+  line-height:1.25;display:flex;align-items:center;gap:8px;}
+.ml-pickbtn:hover{background:var(--soft-hover);}
+.ml-pick.open .ml-pickbtn{border-color:var(--brand);background:var(--card);}
+.ml-picklabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+.ml-chev{position:absolute;right:16px;top:50%;width:7px;height:7px;border-right:2px solid var(--soft);
+  border-bottom:2px solid var(--soft);transform:translateY(-70%) rotate(45deg);pointer-events:none;border-radius:1px;
+  transition:transform .18s var(--ease);}
+.ml-pick.open .ml-chev{transform:translateY(-30%) rotate(-135deg);border-color:var(--brand);}
+.ml-pickmenu{position:absolute;z-index:40;top:calc(100% + 8px);left:0;right:0;max-height:290px;overflow-y:auto;
+  background:var(--card);border:0;border-radius:var(--r-sm);box-shadow:var(--sh-float);padding:8px;
+  animation:mlfade .18s var(--ease);}
+.ml-pickopt{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;
+  text-align:left;padding:11px 40px 11px 13px;border:0;background:none;color:var(--ink);border-radius:var(--r-xs);
+  font-size:14.5px;font-family:inherit;min-height:44px;font-weight:500;}
+.ml-pickopt:hover{background:var(--soft-hover);}
+.ml-pickopt.on{background:var(--field);font-weight:700;}
+.ml-pickopt.on::after{content:"";position:absolute;right:15px;top:50%;width:16px;height:8px;margin-top:-7px;
+  border-left:2.5px solid var(--credit);border-bottom:2.5px solid var(--credit);transform:rotate(-45deg);border-radius:1px;}
+.ml-pickhint{font-size:12px;color:var(--soft);font-weight:500;}
+.ml-pick.sm .ml-pickbtn{min-height:36px;padding:6px 28px 6px 12px;font-size:13px;background:transparent;font-weight:600;}
+.ml-pick.sm .ml-chev{right:10px;width:6px;height:6px;}
+.ml-pick.sm .ml-pickmenu{left:auto;right:0;min-width:236px;}
+
+/* ---- calendar ---- */
+.ml-cal{position:absolute;z-index:40;top:calc(100% + 8px);left:0;width:300px;max-width:calc(100vw - 40px);
+  background:var(--card);border:0;border-radius:var(--r-sm);box-shadow:var(--sh-float);padding:16px;
+  animation:mlfade .18s var(--ease);}
+.ml-calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.ml-calnav{width:32px;height:32px;border:0;border-radius:50%;background:var(--field);color:var(--ink);
+  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
+.ml-calnav:hover{background:var(--soft-hover);}
+.ml-calmon{font-size:14px;font-weight:700;letter-spacing:-.01em;}
+.ml-calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.ml-caldow{font-size:10.5px;font-weight:600;color:var(--faint);text-align:center;padding:5px 0;}
+.ml-calday{aspect-ratio:1/1;min-height:36px;border:0;background:none;border-radius:50%;color:var(--ink);
+  font-family:inherit;font-size:13.5px;font-weight:500;display:flex;align-items:center;justify-content:center;}
+.ml-calday:hover{background:var(--soft-hover);}
+.ml-calday.on{background:var(--accent);color:var(--accent-ink);font-weight:700;}
+.ml-calday.today{box-shadow:inset 0 0 0 1.5px var(--brand);}
+.ml-calday.mute{visibility:hidden;}
+.ml-calfoot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+
+/* ---- alerts ---- */
+.ml-alert{display:flex;gap:13px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line-soft);}
+.ml-alert:last-child{border-bottom:0;}
+.ml-adot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--faint);}
+.ml-adot.now{background:var(--debit);} .ml-adot.soon{background:var(--amber);} .ml-adot.ok{background:var(--credit);}
+.ml-atitle{font-weight:700;font-size:14.5px;letter-spacing:-.01em;}
+.ml-ameta{font-size:12.5px;color:var(--soft);margin-top:3px;}
+.ml-awhen{margin-left:auto;text-align:right;flex:0 0 auto;}
+.ml-awhen b{display:block;font-size:13px;font-weight:700;}
+
+/* ---- 4b. SPARKLINE / AREA CHART ---- */
+.ml-spark{width:100%;height:auto;display:block;overflow:visible;}
+.ml-sparkwrap{margin-top:6px;}
+.ml-sparkx{display:flex;justify-content:space-between;margin-top:8px;}
+.ml-sparkx span{font-size:11px;color:var(--faint);font-weight:500;}
+.ml-legend{display:flex;gap:16px;margin-top:14px;}
+.ml-legend span{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--soft);font-weight:500;}
+.ml-legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+/* ---- disclosure, schedule, month ---- */
+.ml-disclose{display:flex;align-items:center;gap:12px;width:100%;padding:0;border:0;background:none;
+  color:var(--ink);text-align:left;min-height:46px;}
+.ml-disclose:hover .ml-h{color:var(--brand);}
+.ml-chevs{position:static;transform:rotate(45deg);flex:0 0 auto;margin-left:2px;}
+.ml-chevs.up{transform:rotate(-135deg);}
+.ml-sched{margin-top:14px;border-top:1px solid var(--line);}
+.ml-srow{display:grid;grid-template-columns:24px minmax(0,1fr) 98px 32px;gap:10px;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
+.ml-srow:last-child{border-bottom:0;}
+.ml-sk{font-size:11.5px;font-weight:600;color:var(--faint);}
+.ml-samt{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:-.02em;}
+.ml-sedit{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0 12px;}
+.ml-sedit input{flex:1 1 120px;min-width:0;}
+.ml-monthbal{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:17px;margin:14px 0 4px;
+  border-radius:var(--r-sm);background:var(--sunk);}
+@media(min-width:620px){.ml-monthbal{grid-template-columns:repeat(4,1fr);}}
+.ml-mbv{font-size:17px;font-weight:800;margin-top:5px;letter-spacing:-.03em;}
+.ml-mbnote{grid-column:1/-1;}
+.ml-monthbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+.ml-monthbar .ml-pick{flex:0 1 210px;}
+.ml-barcol{flex:1;text-align:center;background:none;border:0;padding:0;color:inherit;border-radius:var(--r-xs);}
+.ml-barcol:hover{background:var(--soft-hover);}
+
+@media(hover:none){
+  .ml-btn:hover{background:var(--accent);}
+  .ml-btn.ghost:hover{background:var(--field);}
+  .ml-x:hover,.ml-pickopt:hover,.ml-calday:hover,.ml-theme:hover,.ml-calnav:hover,.ml-barcol:hover,.ml-acchead:hover{background:transparent;}
+  .ml-rowacts{opacity:1;}
 }
 @media(prefers-reduced-motion:reduce){.ml-root *{animation:none!important;transition:none!important;}}
 `;
@@ -306,7 +435,10 @@ const dueAfter = (close, dday) => {
 /* A card carries two dates: when its cycle turns over, and when that bill is
    payable. Only the day-of-month matters — both repeat every month. */
 const clampDay = (n, fallback) => Math.min(28, Math.max(1, num(n) || fallback));
-const stmtDay = (c) => clampDay(c.cycleDate ? c.cycleDate.slice(8, 10) : c.statementDay, 1);
+const stmtDay = (c) => clampDay(
+  c.cycleStart ? c.cycleStart.slice(8, 10) : c.cycleDate ? c.cycleDate.slice(8, 10) : c.statementDay, 1);
+/* The end of a cycle that begins on this date — the day before the next one. */
+const cycleEndFor = (start) => addDays(addMonths(start, 1), -1);
 const dueDayOf = (c) => clampDay(c.dueDate ? c.dueDate.slice(8, 10) : c.dueDay, 20);
 /* The cycle running today, and the date its bill falls due. */
 const currentCycle = (c, today) => {
@@ -328,6 +460,90 @@ const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 const fmt = (n, dp = 2) =>
   "₹" + (Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const fmt0 = (n) => fmt(n, 0);
+const NAV_ICONS = {
+  log: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>),
+  overview: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>),
+  alerts: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>),
+  accounts: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18M7 15h4" /></svg>),
+  cards: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5" /><path d="M2.5 10h19" /></svg>),
+  shared: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="18" cy="7.5" r="2.4" /><path d="M15.5 12.2c2.9.4 5 2.5 5 5.3" /></svg>),
+  emi: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3.3" /><path d="M4.5 20.5c0-4.1 3.3-7 7.5-7s7.5 2.9 7.5 7" /></svg>),
+  auto: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11A8 8 0 1 0 6.3 17.5" /><path d="M20 5v6h-6M4 22v-4M9 20h-5" /></svg>),
+  budget: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg>),
+  backup: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13m0 0-4-4m4 4 4-4" /><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /></svg>),
+  settings: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" /></svg>),
+  more: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>),
+};
+const NavIcon = ({ id }) => <span style={{ width: 19, height: 19, display: "inline-flex", flex: "0 0 auto" }}>{NAV_ICONS[id] || NAV_ICONS.more}</span>;
+
+/* ---------- 3. SMART LOGO ----------
+   Resolves an icon (by keyword match on category/note) or falls back to a
+   deterministic pastel initial badge — same idea as Google Pay's merchant
+   avatars, without depending on any external logo service. */
+const LOGO_KEYS = [
+  [/grocer|super ?market|mart/i, "cart", ["#FDEDD3", "#B9720B"]],
+  [/dining|restaurant|food|cafe|coffee/i, "cup", ["#FBE3E0", "#C2452F"]],
+  [/travel|flight|train|uber|ola|cab/i, "plane", ["#E3ECFC", "#2A5BC7"]],
+  [/fuel|petrol|gas/i, "fuel", ["#FDEBD6", "#B85A15"]],
+  [/util|electri|water|broadband|internet|wifi/i, "bolt", ["#FFF3CE", "#B08900"]],
+  [/rent/i, "home", ["#E7F3EC", "#1E7F4E"]],
+  [/health|medic|pharma|doctor|hospital/i, "heart", ["#FCE4EC", "#C2306B"]],
+  [/entertain|movie|music|game|stream/i, "play", ["#F0E6FB", "#6B3FB0"]],
+  [/subscri/i, "repeat", ["#E4F0FB", "#1E6FB0"]],
+  [/educat|course|tuition|school/i, "book", ["#E9F0FE", "#2C57B5"]],
+  [/loan|emi/i, "bank", ["#F0EAFB", "#5B3FAE"]],
+  [/invest/i, "trend", ["#E7F3EC", "#1E7F4E"]],
+  [/transfer/i, "swap", ["#EDEFF3", "#4B5563"]],
+  [/settle|refund/i, "check", ["#E7F3EC", "#1E7F4E"]],
+  [/salary|income/i, "wallet", ["#FFF3CE", "#B08900"]],
+  [/shop|store|amazon|flipkart/i, "bag", ["#FBE3E0", "#C2452F"]],
+];
+const LOGO_GLYPHS = {
+  cart: "M4 5h2l1.2 9.6a2 2 0 0 0 2 1.7h6.6a2 2 0 0 0 2-1.6L19 8H7 M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z",
+  cup: "M4 8h13a3 3 0 0 1 0 6h-1M4 8v7a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4V8M4 8V5h9v3",
+  plane: "M11 3 3 10l4 1 1 4 3-3 3 5 3-14-13 4 4 2",
+  fuel: "M5 21V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v15M5 21h8M5 11h6M15 8l3 2v6.5a1.5 1.5 0 0 0 3 0V9l-2-2",
+  bolt: "M13 2 4 14h6l-1 8 9-12h-6z",
+  home: "M4 11 12 4l8 7M6 10v10h5v-6h2v6h5V10",
+  heart: "M12 20s-7-4.4-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z",
+  play: "M7 4v16l14-8Z",
+  repeat: "M17 2 21 6l-4 4M3 12a6 6 0 0 1 10.2-4.2L21 6M7 22 3 18l4-4M21 12a6 6 0 0 1-10.2 4.2L3 18",
+  book: "M4 19.5V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h13",
+  bank: "M3 21h18M4 21V10l8-6 8 6v11M9 21v-6h6v6",
+  trend: "m3 17 6-6 4 4 8-8M15 6h6v6",
+  swap: "m17 3 4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3",
+  check: "M20 6 9 17l-5-5",
+  wallet: "M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2H5v10a1 1 0 0 0 1 1h13V9M17 13h.01",
+  bag: "M6 8h12l1 12H5L6 8Zm3 0V6a3 3 0 0 1 6 0v2",
+};
+const initialsOf = (s) => {
+  const words = String(s || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "?";
+  return words.length === 1 ? words[0].slice(0, 2).toUpperCase() : (words[0][0] + words[1][0]).toUpperCase();
+};
+/* Deterministic pastel pair from the string itself — same label, same colour, every time. */
+const pastelFor = (s) => {
+  let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return [`hsl(${hue} 72% 92%)`, `hsl(${hue} 45% 38%)`];
+};
+function SmartLogo({ label, small }) {
+  const text = String(label || "");
+  const hit = LOGO_KEYS.find(([re]) => re.test(text));
+  const [bg, fg] = hit ? hit[2] : pastelFor(text || "?");
+  return (
+    <div className={"ml-logo" + (small ? " sm" : "")} style={{ background: bg, color: fg }}>
+      {hit ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d={LOGO_GLYPHS[hit[1]]} />
+        </svg>
+      ) : (
+        <span style={{ fontWeight: 700 }}>{initialsOf(text)}</span>
+      )}
+    </div>
+  );
+}
+
 const compact = (n) => {
   const a = Math.abs(n);
   if (a >= 1e7) return "₹" + (n / 1e7).toFixed(1) + "Cr";
@@ -357,8 +573,8 @@ const DEPOSIT_KINDS = [
 ];
 
 /* Flat printed-ink tones, cycled by position. Deeper set for cards, cooler set for accounts. */
-const CARD_INKS = ["#27408B", "#5C2E3E", "#2F4F4F", "#4A3B6B", "#7A3B22", "#1F3A5F"];
-const ACC_INKS = ["#1F6F5C", "#3E5C76", "#6B5B3E", "#4E6E58", "#5B4B6E", "#2F5D62"];
+const CARD_INKS = ["#1C1E22", "#2E2A55", "#5C3A1E", "#123C36", "#3B2440", "#26303D"];
+const ACC_INKS = ["#3F4D2A", "#123B4D", "#3A2A55", "#4D2A1E", "#1F4D33", "#4A3B1E"];
 const inkFor = (set, i) => set[i % set.length];
 
 /* ---------- storage (window.storage in Claude, localStorage elsewhere) ---------- */
@@ -407,6 +623,12 @@ const MoonIcon = () => (
   </svg>
 );
 
+const PencilIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4.5 19.5h4.2L19.4 8.8a2 2 0 0 0 0-2.8l-1.4-1.4a2 2 0 0 0-2.8 0L4.5 15.3v4.2z" />
+  </svg>
+);
 const TrashIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -449,7 +671,12 @@ const blank = () => ({
     { id: uid(), name: "Emergency fund", type: "Savings", earningInterest: true, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
     { id: uid(), name: "Cash wallet", type: "Cash", earningInterest: false, balance: 0, lastAccrual: TODAY(), interestEarned: 0 },
   ],
-  cards: [{ id: uid(), name: "Primary credit card", limit: 200000, cycleDate: onDay(monthOf(TODAY()), 15), dueDate: onDay(addMonthKey(monthOf(TODAY()), 1), 5) }],
+  cards: [{
+    id: uid(), name: "Primary credit card", limit: 200000,
+    cycleStart: onDay(monthOf(TODAY()), 15),
+    cycleEnd: cycleEndFor(onDay(monthOf(TODAY()), 15)),
+    dueDate: onDay(addMonthKey(monthOf(TODAY()), 1), 5),
+  }],
   spends: [],       // credit-card ledger
   savingsTx: [],    // deposits, withdrawals, interest, auto-debits, card payments
   emis: [],         // friends' purchases on your card
@@ -507,6 +734,47 @@ function buildStatements(card, entries, payments, today) {
     st.overdue = !st.open && st.balance > 0 && st.due < today;
   });
   return out;
+}
+
+const CREDIT_TYPES = ["deposit", "interest", "settlement", "transfer-in"];
+const isCredit = (t) => CREDIT_TYPES.includes(t.type) || (t.type === "adjustment" && t.up);
+
+/* Every month that actually has something in it, newest first. */
+function monthsWithData(data) {
+  const seen = {};
+  data.spends.forEach((x) => { seen[monthOf(x.date)] = 1; });
+  data.savingsTx.forEach((x) => { seen[monthOf(x.date)] = 1; });
+  return Object.keys(seen).sort().reverse();
+}
+
+/* An account's balance as it stood before a given date — worked back from
+   today's balance by unwinding everything posted on or after it. */
+function balanceBefore(data, accountId, iso) {
+  const a = data.accounts.find((x) => x.id === accountId);
+  if (!a) return 0;
+  let bal = num(a.balance);
+  data.savingsTx.forEach((t) => {
+    if (t.accountId !== accountId || t.date < iso) return;
+    bal = r2(bal + (isCredit(t) ? -num(t.amount) : num(t.amount)));
+  });
+  return r2(bal);
+}
+const monthStart = (key) => `${key}-01`;
+const monthAfter = (key) => `${addMonthKey(key, 1)}-01`;
+
+/* Opening and closing for one account, or for all of them together. */
+function monthBalances(data, key, accountId) {
+  const list = accountId ? data.accounts.filter((a) => a.id === accountId) : data.accounts;
+  const open = r2(list.reduce((sum, a) => sum + balanceBefore(data, a.id, monthStart(key)), 0));
+  const close = r2(list.reduce((sum, a) => sum + balanceBefore(data, a.id, monthAfter(key)), 0));
+  const moves = data.savingsTx.filter((t) =>
+    monthOf(t.date) === key && (!accountId || t.accountId === accountId));
+  return {
+    open, close,
+    inflow: r2(moves.filter(isCredit).reduce((sum, t) => sum + num(t.amount), 0)),
+    outflow: r2(moves.filter((t) => !isCredit(t)).reduce((sum, t) => sum + num(t.amount), 0)),
+    count: moves.length,
+  };
 }
 
 /* ---------- engines ---------- */
@@ -585,12 +853,76 @@ function runRecurring(d) {
   return fired;
 }
 
-const emiMonthly = (e) => (num(e.months) > 0 ? r2(num(e.principal) / num(e.months)) : 0);
-const emiDueCount = (e) => {
-  const today = TODAY();
-  let n = 0;
-  for (let i = 0; i < num(e.months); i++) if (addMonths(e.startDate, i) <= today) n++;
-  return n;
+/* A card EMI is not just principal ÷ months.
+   No-cost: the merchant absorbs the interest, but the bank still charges a
+   processing fee and tax on that fee up front.
+   Interest-bearing: a reducing-balance schedule, with tax on each month's
+   interest portion — so the instalment drifts slightly month to month.
+   Every rate is a field on the EMI, never assumed. */
+function emiSchedule(e) {
+  const P = num(e.principal);
+  const n = Math.max(1, Math.round(num(e.months)));
+  const start = e.startDate || TODAY();
+  const fee = num(e.procFee);
+  const feeTax = r2(fee * num(e.feeGst) / 100);
+  const upfront = r2(fee + feeTax);
+  const rows = [];
+
+  if ((e.emiType || "nocost") === "interest" && num(e.rate) > 0) {
+    const i = num(e.rate) / 100 / 12;
+    const factor = Math.pow(1 + i, n);
+    const flat = (P * i * factor) / (factor - 1);
+    let bal = P;
+    for (let k = 0; k < n; k++) {
+      const interest = bal * i;
+      const principal = flat - interest;
+      const tax = interest * num(e.intGst) / 100;
+      bal = bal - principal;
+      rows.push({
+        k, date: addMonths(start, k), principal: r2(principal),
+        interest: r2(interest), tax: r2(tax), amount: r2(flat + tax),
+      });
+    }
+  } else {
+    const per = P / n;
+    for (let k = 0; k < n; k++) {
+      rows.push({ k, date: addMonths(start, k), principal: r2(per), interest: 0, tax: 0, amount: r2(per) });
+    }
+  }
+
+  /* The bank's statement wins. An override replaces that one month's figure;
+     every later month stays as computed, and the totals follow the effective
+     amounts rather than the modelled ones. */
+  const ov = e.overrides || {};
+  rows.forEach((r) => {
+    const raw = ov[String(r.k)];
+    if (raw === undefined || raw === null || raw === "") return;
+    const v = num(raw);
+    if (!(v >= 0)) return;
+    r.computed = r.amount;
+    r.amount = r2(v);
+    r.override = true;
+  });
+
+  const instalments = r2(rows.reduce((sum, r) => sum + r.amount, 0));
+  const modelled = r2(rows.reduce((sum, r) => sum + (r.override ? r.computed : r.amount), 0));
+  return {
+    rows, fee: r2(fee), feeTax, upfront, instalments,
+    interest: r2(rows.reduce((sum, r) => sum + r.interest, 0)),
+    tax: r2(rows.reduce((sum, r) => sum + r.tax, 0)),
+    total: r2(instalments + upfront),
+    modelledTotal: r2(modelled + upfront),
+    drift: r2(instalments - modelled),
+    overrides: rows.filter((r) => r.override).length,
+    monthly: rows.length ? rows[0].amount : 0,
+  };
+}
+
+/* Everything the card has been charged for this EMI so far. */
+const emiDueBy = (sched, e, on) => {
+  let due = (e.startDate || TODAY()) <= on ? sched.upfront : 0;
+  sched.rows.forEach((r) => { if (r.date <= on) due = r2(due + r.amount); });
+  return r2(due);
 };
 
 /* ---------- sample data ---------- */
@@ -602,7 +934,11 @@ function sampleData() {
   sal.balance = 184500; sal.lastAccrual = addDays(t, -4);
   emg.balance = 260000; emg.type = "Savings (FD linked)"; emg.lastAccrual = addDays(t, -4);
   cash.balance = 4200;
-  d.cards.push({ id: uid(), name: "Travel card", limit: 120000, cycleDate: onDay(monthOf(t), 25), dueDate: onDay(addMonthKey(monthOf(t), 1), 14) });
+  d.cards.push({
+    id: uid(), name: "Travel card", limit: 120000,
+    cycleStart: onDay(monthOf(t), 25), cycleEnd: cycleEndFor(onDay(monthOf(t), 25)),
+    dueDate: onDay(addMonthKey(monthOf(t), 1), 14),
+  });
   const c1 = d.cards[0].id, c2 = d.cards[1].id;
   const rows = [
     [2, "Groceries", 3480, "Weekly big basket", c1], [3, "Dining", 920, "Team lunch", c1],
@@ -646,10 +982,12 @@ export default function MoneyLedger() {
   const [tab, setTab] = useState("overview");
   const [toast, setToast] = useState("");
   const [view, setView] = useState("total");
+  const [jump, setJump] = useState(null);   // { tab, id } — opened from Overview
+  const [moreOpen, setMoreOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [theme, setTheme] = useState(() => {
     try {
-      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
     } catch (e) { return "light"; }
   });
   const [posted, setPosted] = useState([]);
@@ -706,15 +1044,18 @@ export default function MoneyLedger() {
 
     const recoverableIds = new Set();
     const emiRows = data.emis.map((e) => {
-      const monthly = emiMonthly(e);
-      const due = emiDueCount(e);
-      const received = data.repayments.filter((r) => r.emiId === e.id).reduce((s, r) => s + num(r.amount), 0);
-      const outstanding = r2(num(e.principal) - received);
-      const overdue = r2(Math.max(0, due * monthly - received));
-      return { ...e, monthly, due, received, outstanding, overdue };
+      const sched = emiSchedule(e);
+      const due = sched.rows.filter((r) => r.date <= today).length;
+      const received = r2(data.repayments.filter((r) => r.emiId === e.id).reduce((s, r) => s + num(r.amount), 0));
+      /* the friend carries the whole cost, so what they owe is the full schedule */
+      const outstanding = r2(Math.max(0, sched.total - received));
+      const overpaid = r2(Math.max(0, received - sched.total));
+      const billedSoFar = emiDueBy(sched, e, today);
+      const overdue = r2(Math.max(0, billedSoFar - received));
+      return { ...e, sched, monthly: sched.monthly, due, received, outstanding, overpaid, overdue, billedSoFar, total: sched.total };
     });
     const receivable = r2(emiRows.reduce((s, e) => s + Math.max(0, e.outstanding), 0));
-    const emiBilled = r2(emiRows.reduce((s, e) => s + Math.min(num(e.principal), e.due * e.monthly), 0));
+    const emiBilled = r2(emiRows.reduce((s, e) => s + e.billedSoFar, 0));
 
     // unified outflow stream (card spends + savings auto-debits + withdrawals)
     const flows = [
@@ -772,12 +1113,18 @@ export default function MoneyLedger() {
       const mine = emiRows.filter((e) => e.cardId === c.id);
       const instal = [];
       mine.forEach((e) => {
-        for (let i = 0; i < num(e.months); i++) {
+        if (e.sched.upfront > 0) {
           instal.push({
-            date: addMonths(e.startDate, i), amount: e.monthly, kind: "emi",
-            label: `${e.friend} — ${e.item} (${i + 1}/${e.months})`,
+            date: e.startDate, amount: e.sched.upfront, kind: "emi", emiId: e.id,
+            label: `${e.friend} — ${e.item} · fee + tax`,
           });
         }
+        e.sched.rows.forEach((r) => {
+          instal.push({
+            date: r.date, amount: r.amount, kind: "emi", emiId: e.id,
+            label: `${e.friend} — ${e.item} (${r.k + 1}/${e.months})`,
+          });
+        });
       });
 
       const payments = data.savingsTx.filter((t) => t.type === "card-payment" && t.cardId === c.id);
@@ -786,17 +1133,19 @@ export default function MoneyLedger() {
       const closed = statements.filter((x) => !x.open);
 
       const billed = r2(closed.reduce((sum, x) => sum + Math.max(0, x.balance), 0));
-      const unbilled = openSt ? openSt.amount : 0;
+      const unbilled = openSt ? r2(Math.max(0, openSt.amount - openSt.paid)) : 0;
+      /* what the card owes right now, moving with every entry rather than
+         waiting for the cycle to close */
+      const live = r2(billed + unbilled);
       /* Instalments not yet on any statement still hold against the limit. */
       const horizon = openSt ? openSt.close : today;
       const emiHold = r2(mine.reduce((sum, e) => {
-        const onCard = instal.filter((i) => i.date < horizon && i.label.startsWith(`${e.friend} — ${e.item}`))
-          .reduce((a, i) => a + i.amount, 0);
-        return sum + Math.max(0, num(e.principal) - onCard);
+        const onCard = instal.filter((i) => i.emiId === e.id && i.date < horizon).reduce((a, i) => a + i.amount, 0);
+        return sum + Math.max(0, e.total - onCard);
       }, 0));
 
       const paid = r2(payments.reduce((sum, t) => sum + num(t.amount), 0));
-      const used = r2(billed + unbilled + emiHold);
+      const used = r2(live + emiHold);
       const nextBill = closed.find((x) => x.balance > 0) || (openSt && openSt.amount > 0 ? openSt : null);
 
       return {
@@ -804,7 +1153,7 @@ export default function MoneyLedger() {
         own: r2(spends.reduce((sum, x) => sum + x.amount, 0)),
         emiDue: r2(instal.filter((i) => !openSt || i.date < openSt.start).reduce((a, i) => a + i.amount, 0)),
         blocked: emiHold,
-        outstanding: billed,
+        outstanding: live, billedOnly: billed,
         overdue: r2(closed.filter((x) => x.overdue).reduce((sum, x) => sum + x.balance, 0)),
         nextDue: nextBill ? nextBill.due : null,
         nextDueAmount: nextBill ? (nextBill.open ? nextBill.amount : nextBill.balance) : 0,
@@ -970,19 +1319,43 @@ export default function MoneyLedger() {
   };
   const shown = resolveView();
   const TABS = [
-    ["overview", "Overview"], ["accounts", "Accounts"], ["cards", "Cards"],
-    ["alerts", "Alerts"], ["shared", "Shared"], ["emi", "Friends"], ["auto", "Auto-pay"], ["budget", "Budget"],
+    ["log", "Quick log"], ["overview", "Overview"], ["alerts", "Alerts"],
+    ["accounts", "Accounts"], ["cards", "Cards"], ["shared", "Shared"],
+    ["emi", "Friends & Family"], ["auto", "Auto-pay"], ["budget", "Budget"],
     ["backup", "Backup"], ["settings", "Settings"],
   ];
 
   return (
     <div className="ml-root" data-theme={theme}>
       <style>{CSS}</style>
+      <div className="ml-shell">
 
+      <aside className="ml-side">
+        <div className="ml-sidepill">
+          <div className="ml-sidebrand"><NavIcon id="overview" /> Money<span> Ledger</span></div>
+          {TABS.map(([id, label]) => (
+            <button key={id} className="ml-sidelink" data-on={tab === id ? "1" : "0"} onClick={() => setTab(id)}>
+              <NavIcon id={id} />
+              <span>{label}</span>
+              {id === "alerts" && A.urgent > 0 && <span className="ml-pill off">{A.urgent}</span>}
+            </button>
+          ))}
+          <div className="ml-sidefoot">
+            <button className="ml-theme" onClick={toggleHidden} title={hidden ? "Show figures" : "Hide figures"}>
+              {hidden ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+            <button className="ml-theme" onClick={toggleTheme} title={dark ? "Light mode" : "Dark mode"}>
+              {dark ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="ml-main">
       <header className="ml-top">
         <div className="ml-topin">
           <div className="ml-headline">
-            <div className="ml-brand">Money <span>Ledger</span></div>
+            <div className="ml-brand">Money<span> Ledger</span></div>
             <div className="ml-flex" style={{ flexWrap: "nowrap", gap: 6 }}>
               <button className="ml-theme" onClick={toggleHidden}
                 aria-label={hidden ? "Show figures" : "Hide figures"}
@@ -1005,21 +1378,30 @@ export default function MoneyLedger() {
               {shown.note && <div className="ml-statn" style={{ textAlign: "right" }}>{hidden ? "hidden" : shown.note}</div>}
             </div>
           </div>
-          <nav className="ml-tabs">
-            {TABS.map(([id, label]) => (
-              <button key={id} className="ml-tab" data-on={tab === id ? "1" : "0"} onClick={() => setTab(id)}>
-                {label}
-                {id === "alerts" && A.urgent > 0 && <span className="ml-tabbadge">{A.urgent}</span>}
+          <div className="ml-tabsel">
+            <Pick value={tab} onChange={setTab}
+              options={TABS.map(([id, label]) => ({
+                value: id,
+                label: id === "alerts" && A.urgent > 0 ? `${label} (${A.urgent})` : label,
+                hint: TAB_HINTS[id],
+              }))} />
+            {A.urgent > 0 && tab !== "alerts" && (
+              <button className="ml-btn ghost sm" onClick={() => setTab("alerts")}>
+                {A.urgent} need{A.urgent === 1 ? "s" : ""} attention
               </button>
-            ))}
-          </nav>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="ml-wrap">
-        {tab === "overview" && <Overview A={A} data={data} posted={posted} setTab={setTab} />}
-        {tab === "accounts" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} />}
-        {tab === "cards" && <Cards A={A} data={data} mutate={mutate} say={say} />}
+        {tab === "log" && <QuickLog A={A} data={data} mutate={mutate} say={say} setTab={setTab} />}
+        {tab === "overview" && (
+          <Overview A={A} data={data} posted={posted} setTab={setTab}
+            open={(t, id) => { setJump({ tab: t, id }); setTab(t); }} />
+        )}
+        {tab === "accounts" && <Savings A={A} data={data} mutate={mutate} say={say} posted={posted} effRate={effRate} jump={jump && jump.tab === "accounts" ? jump.id : null} />}
+        {tab === "cards" && <Cards A={A} data={data} mutate={mutate} say={say} jump={jump && jump.tab === "cards" ? jump.id : null} />}
         {tab === "alerts" && <Alerts A={A} setTab={setTab} />}
         {tab === "shared" && <SharedPanel A={A} data={data} mutate={mutate} say={say} />}
         {tab === "emi" && <Emis A={A} data={data} mutate={mutate} say={say} />}
@@ -1029,10 +1411,70 @@ export default function MoneyLedger() {
         {tab === "settings" && <Settings A={A} data={data} mutate={mutate} setData={setData} say={say} setPosted={setPosted} where={where} />}
       </main>
 
+      </div>
+      </div>
+
+      <nav className="ml-bnav">
+        {BOTTOM_NAV.map(([id, label]) => (
+          <button key={id} className="ml-bitem" data-on={tab === id ? "1" : "0"} onClick={() => setTab(id)}>
+            <NavIcon id={id} />
+            <span>{label}</span>
+            {id === "alerts" && A.urgent > 0 && <span className="ml-bcount">{A.urgent}</span>}
+          </button>
+        ))}
+        <button className="ml-bfab" onClick={() => setTab("log")} aria-label="Quick log">
+          <NavIcon id="log" />
+        </button>
+        <button className="ml-bitem" data-on={moreOpen ? "1" : "0"} onClick={() => setMoreOpen(true)}>
+          <NavIcon id="more" />
+          <span>More</span>
+        </button>
+      </nav>
+
+      {moreOpen && (
+        <Modal title="All sections" onClose={() => setMoreOpen(false)}>
+          {TABS.map(([id, label]) => (
+            <button key={id} className="ml-pickopt" style={{ marginBottom: 4, display: "flex", flexDirection: "row", alignItems: "center", gap: 12 }}
+              onClick={() => { setTab(id); setMoreOpen(false); }}>
+              <NavIcon id={id} />
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <span>{label}</span>
+                <span className="ml-pickhint">{TAB_HINTS[id]}</span>
+              </span>
+            </button>
+          ))}
+          <div className="ml-flex" style={{ marginTop: 14 }}>
+            <button className="ml-btn ghost sm" onClick={() => { toggleHidden(); }}>
+              {hidden ? "Show figures" : "Hide figures"}
+            </button>
+            <button className="ml-btn ghost sm" onClick={() => { toggleTheme(); }}>
+              {dark ? "Light mode" : "Dark mode"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {toast && <div className="ml-toast">{toast}</div>}
     </div>
   );
 }
+
+/* What sits on the phone's bottom bar; everything else lives behind More. */
+const BOTTOM_NAV = [["overview", "Home"], ["cards", "Cards"], ["alerts", "Alerts"]];
+
+const TAB_HINTS = {
+  log: "log anything, anywhere",
+  overview: "where the month stands",
+  alerts: "what's falling due",
+  accounts: "balances, interest, statements",
+  cards: "cycles, bills and limits",
+  shared: "split bills to collect",
+  emi: "purchases on your card",
+  auto: "loans, rent, subscriptions",
+  budget: "caps and targets",
+  backup: "take a copy",
+  settings: "rate, income, categories",
+};
 
 /* ---------- small building blocks ---------- */
 const Stat = ({ label, value, note, tone, raw }) => (
@@ -1099,6 +1541,67 @@ function Modal({ title, subtitle, onClose, children }) {
           <button className="ml-x" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="ml-modalbody">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* Pick a month to look back at, or stay on the most recent entries. */
+function MonthPick({ value, onChange, months }) {
+  return (
+    <Pick value={value} onChange={onChange} placeholder="Latest entries"
+      options={[{ value: "", label: "Latest entries", hint: "most recent, all months" },
+        ...months.map((k) => ({ value: k, label: monthLabel(k) }))]} />
+  );
+}
+
+/* Opening and closing for the month being viewed. */
+function MonthBalance({ b, label }) {
+  return (
+    <div className="ml-monthbal">
+      <div>
+        <div className="ml-eyebrow">Opening</div>
+        <div className="ml-num ml-mbv">{mask(fmt(b.open))}</div>
+      </div>
+      <div>
+        <div className="ml-eyebrow">In</div>
+        <div className="ml-num ml-mbv ml-credit">{mask(fmt0(b.inflow))}</div>
+      </div>
+      <div>
+        <div className="ml-eyebrow">Out</div>
+        <div className="ml-num ml-mbv ml-debit">{mask(fmt0(b.outflow))}</div>
+      </div>
+      <div>
+        <div className="ml-eyebrow">Closing</div>
+        <div className="ml-num ml-mbv" style={{ fontWeight: 600 }}>{mask(fmt(b.close))}</div>
+      </div>
+      {label && <div className="ml-sub ml-mbnote">{label}</div>}
+    </div>
+  );
+}
+
+/* Edits an entry in place — same fields you filled in, opened on the row itself. */
+function InlineEdit({ fields, values, onSave, onCancel, note }) {
+  const [v, setV] = useState(values);
+  const set = (k, x) => setV({ ...v, [k]: x });
+  return (
+    <div style={{ padding: "10px 0 4px", borderTop: "1px dashed var(--rule)" }}>
+      <div className="ml-form">
+        {fields.map((f) => (
+          <Field key={f.key} label={f.label} span={f.span}>
+            {f.type === "date" ? <DateField value={v[f.key]} onChange={(x) => set(f.key, x)} />
+              : f.type === "select" ? <Pick value={v[f.key]} onChange={(x) => set(f.key, x)} options={f.options} />
+                : <input className={"ml-in" + (f.type === "num" ? " ml-num" : "")}
+                    inputMode={f.type === "num" ? "decimal" : undefined}
+                    value={v[f.key] === undefined ? "" : v[f.key]}
+                    onChange={(ev) => set(f.key, ev.target.value)} />}
+          </Field>
+        ))}
+      </div>
+      {note && <div className="ml-sub" style={{ marginTop: 8 }}>{note}</div>}
+      <div className="ml-flex" style={{ marginTop: 10 }}>
+        <button className="ml-btn sm" onClick={() => onSave(v)}>Save changes</button>
+        <button className="ml-btn ghost sm" onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
@@ -1219,28 +1722,98 @@ const LedgerHead = () => (
   </div>
 );
 
-function LedgerRow({ title, meta, debit, credit, invest, onDelete }) {
+function LedgerRow({ title, meta, debit, credit, invest, onDelete, onEdit }) {
+  const tone = invest ? "ml-invest" : credit ? "ml-credit" : "ml-debit";
+  const amount = invest || credit || debit || 0;
+  const sign = invest ? "" : credit ? "+" : debit ? "−" : "";
   return (
     <div className="ml-lrow">
+      <SmartLogo small label={title} />
       <div className="ml-lmain">
         <div className="ml-ltitle">{title}</div>
         <div className="ml-lmeta">{meta}</div>
       </div>
-      <div className="ml-lcell ml-debit" data-l="Debit">{debit ? fmt(debit) : ""}</div>
-      <div className="ml-lcell ml-credit" data-l="Credit">{credit ? fmt(credit) : ""}</div>
-      <div className="ml-lcell ml-invest" data-l="Invested">{invest ? fmt(invest) : ""}</div>
-      {onDelete ? <button className="ml-x" onClick={onDelete} title="Delete entry"><TrashIcon /></button> : <span />}
+      {amount > 0 && <div className={"ml-lcell " + tone}>{sign}{fmt(amount)}</div>}
+      <span className="ml-rowacts">
+        {onEdit && <button className="ml-x" onClick={onEdit} title="Edit entry"><PencilIcon /></button>}
+        {onDelete && <button className="ml-x" onClick={onDelete} title="Delete entry"><TrashIcon /></button>}
+      </span>
+    </div>
+  );
+}
+
+/* Progressive disclosure: a summary row that expands on tap, so a heavy
+   section (recurring rules, exports, repayment history) never front-loads
+   its detail. */
+function Accordion({ title, subtitle, right, icon, open, onToggle, children }) {
+  return (
+    <div className="ml-acc">
+      <button type="button" className="ml-acchead" onClick={onToggle} aria-expanded={open}>
+        {icon && <SmartLogo small label={icon} />}
+        <span className="ml-accttl">
+          <b>{title}</b>
+          {subtitle && <span>{subtitle}</span>}
+        </span>
+        {right}
+        <span className={"ml-chevs" + (open ? " up" : "")} style={{ color: "var(--faint)" }} />
+      </button>
+      {open && <div className="ml-accbody">{children}</div>}
+    </div>
+  );
+}
+
+/* Soft gradient area sparkline — one or two series over N points. */
+function Sparkline({ series, labels, height = 130, onPointClick }) {
+  const W = 600, H = height, PAD = 8;
+  const all = series.flatMap((s) => s.values);
+  const max = Math.max(1, ...all);
+  const n = labels.length;
+  const x = (i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1);
+  const y = (v) => H - PAD - (v / max) * (H - PAD * 2 - 14);
+  const pathFor = (values) => values.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
+  const areaFor = (values) => `${pathFor(values)} L${x(values.length - 1)},${H} L${x(0)},${H} Z`;
+
+  return (
+    <div className="ml-sparkwrap">
+      <svg className="ml-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <defs>
+          {series.map((s, i) => (
+            <linearGradient key={i} id={`mlgrad${i}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.28" />
+              <stop offset="100%" stopColor={s.color} stopOpacity="0" />
+            </linearGradient>
+          ))}
+        </defs>
+        {series.map((s, i) => (
+          <path key={"a" + i} d={areaFor(s.values)} fill={`url(#mlgrad${i})`} stroke="none" />
+        ))}
+        {series.map((s, i) => (
+          <path key={"l" + i} d={pathFor(s.values)} fill="none" stroke={s.color} strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {labels.map((_, i) => (
+          <circle key={i} cx={x(i)} cy={y(series[0].values[i])} r="9" fill="transparent"
+            style={{ cursor: onPointClick ? "pointer" : "default" }}
+            onClick={() => onPointClick && onPointClick(i)} />
+        ))}
+      </svg>
+      <div className="ml-sparkx">
+        {labels.map((l, i) => <span key={i}>{l}</span>)}
+      </div>
     </div>
   );
 }
 
 /* ---------- OVERVIEW ---------- */
-function Overview({ A, data, posted, setTab }) {
+function Overview({ A, data, posted, setTab, open }) {
   const [logOpen, setLogOpen] = useState(false);
-  const max = Math.max(1, ...A.months.map((m) => Math.max(m.spend, m.invest)));
+  const [month, setMonth] = useState("");
   const catMax = Math.max(1, ...A.catRows.map((c) => c[1]));
-  const recent = [...A.flows, ...data.savingsTx.filter((t) => ["deposit", "interest", "settlement"].includes(t.type))]
-    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+  const months = monthsWithData(data);
+  const everything = [...A.flows, ...data.savingsTx.filter((t) => ["deposit", "interest", "settlement"].includes(t.type))]
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const recent = month ? everything.filter((f) => monthOf(f.date) === month) : everything.slice(0, 12);
+  const monthBal = month ? monthBalances(data, month, null) : null;
 
   return (
     <div className="ml-page">
@@ -1251,16 +1824,31 @@ function Overview({ A, data, posted, setTab }) {
         <Stat label="Save rate" value={A.saveRate === null ? "—" : `${A.saveRate}%`} note={A.income ? `on ${fmt0(A.income)} income` : "set income in Settings"} />
       </StatRow>
 
+      <div className="ml-qa ml-w6">
+        {[
+          ["log", "Add spend", "log"],
+          ["accounts", "Transfer", "swap"],
+          ["shared", "Split bill", "shared"],
+          ["cards", "Pay a bill", "cards"],
+          ["alerts", "Reminders", "alerts"],
+        ].map(([t, label, icon]) => (
+          <button key={label} className="ml-qabtn" onClick={() => setTab(t)}>
+            <span className="ml-qaic"><NavIcon id={icon} /></span>
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="ml-wallet ml-w6">
         {data.accounts.map((a, i) => (
           <Face key={a.id} tone={inkFor(ACC_INKS, i)} title={a.name} sub={a.type}
-            rightLabel="Balance" rightValue={fmt0(a.balance)} onClick={() => setTab("accounts")} />
+            rightLabel="Balance" rightValue={fmt0(a.balance)} onClick={() => open("accounts", a.id)} />
         ))}
         {A.cardRows.map((c, i) => (
           <Face key={c.id} chip tone={inkFor(CARD_INKS, i)} title={c.name}
             leftLabel="Limit" leftValue={fmt0(c.limit || 0)}
             rightLabel="Outstanding" rightValue={fmt0(c.outstanding)}
-            onClick={() => setTab("cards")} />
+            onClick={() => open("cards", c.id)} />
         ))}
       </div>
 
@@ -1275,20 +1863,29 @@ function Overview({ A, data, posted, setTab }) {
 
         <div className="ml-card ml-w3">
           <div className="ml-eyebrow">Six months — spending vs investing</div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 150, marginTop: 10 }}>
-            {A.months.map((m) => (
-              <div key={m.key} style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ display: "flex", gap: 3, alignItems: "flex-end", justifyContent: "center", height: 120 }}>
-                  <div title={`Spent ${fmt0(m.spend)}`} style={{ width: "42%", background: "var(--debit)", height: `${(m.spend / max) * 100}%`, minHeight: m.spend ? 2 : 0 }} />
-                  <div title={`Invested ${fmt0(m.invest)}`} style={{ width: "42%", background: "var(--stamp)", height: `${(m.invest / max) * 100}%`, minHeight: m.invest ? 2 : 0 }} />
-                </div>
-                <div className="ml-num" style={{ fontSize: 10, color: "var(--soft)", marginTop: 6 }}>{m.label}</div>
-              </div>
-            ))}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 150, marginTop: 12 }}>
+            {A.months.map((m) => {
+              const max = Math.max(1, ...A.months.map((x) => Math.max(x.spend, x.invest)));
+              return (
+                <button key={m.key} type="button" className="ml-barcol"
+                  onClick={() => { setMonth(m.key); setLogOpen(true); }}
+                  title={`Open ${m.label}`}>
+                  <div style={{ display: "flex", gap: 3, alignItems: "flex-end", justifyContent: "center", height: 120 }}>
+                    <div title={`Spent ${fmt0(m.spend)}`}
+                      style={{ width: "42%", background: "var(--debit)", borderRadius: "5px 5px 2px 2px",
+                        height: `${(m.spend / max) * 100}%`, minHeight: m.spend ? 3 : 0 }} />
+                    <div title={`Invested ${fmt0(m.invest)}`}
+                      style={{ width: "42%", background: "var(--stamp)", borderRadius: "5px 5px 2px 2px",
+                        height: `${(m.invest / max) * 100}%`, minHeight: m.invest ? 3 : 0 }} />
+                  </div>
+                  <div className="ml-num" style={{ fontSize: 10, color: "var(--soft)", marginTop: 6 }}>{m.label}</div>
+                </button>
+              );
+            })}
           </div>
-          <div className="ml-flex" style={{ marginTop: 10, fontSize: 11, color: "var(--soft)" }}>
-            <span><i style={{ display: "inline-block", width: 9, height: 9, background: "var(--debit)", marginRight: 5 }} />Expenses</span>
-            <span><i style={{ display: "inline-block", width: 9, height: 9, background: "var(--stamp)", marginRight: 5 }} />Investments</span>
+          <div className="ml-legend">
+            <span><i style={{ background: "var(--debit)" }} />Expenses</span>
+            <span><i style={{ background: "var(--stamp)" }} />Investments</span>
           </div>
         </div>
 
@@ -1303,7 +1900,7 @@ function Overview({ A, data, posted, setTab }) {
                   <span>{cat}</span>
                   <span className="ml-num">{fmt0(amt)} <span style={{ color: "var(--soft)", fontSize: 11 }}>{Math.round((amt / A.spentMonth) * 100)}%</span></span>
                 </div>
-                <div className="ml-bar"><i style={{ width: `${(amt / catMax) * 100}%`, background: "var(--debit)" }} /></div>
+                <div className="ml-bar"><i style={{ width: `${(amt / catMax) * 100}%` }} /></div>
               </div>
             ))
           )}
@@ -1336,15 +1933,20 @@ function Overview({ A, data, posted, setTab }) {
           <div>
             <div className="ml-eyebrow">Recent entries</div>
             <div className="ml-sub" style={{ marginTop: 4 }}>
-              {recent.length === 0 ? "Nothing logged yet." : `${recent.length} most recent across every account and card.`}
+              {everything.length === 0 ? "Nothing logged yet."
+                : `${everything.length} entries across every account and card — browse them by month.`}
             </div>
           </div>
-          <button className="ml-btn sm" onClick={() => setLogOpen(true)}>View</button>
+          <button className="ml-btn sm" onClick={() => setLogOpen(true)}>{month ? monthLabel(month) : "View"}</button>
         </div>
       </div>
 
       {logOpen && (
-        <Modal title="Recent entries" subtitle="Newest first, from every source" onClose={() => setLogOpen(false)}>
+        <Modal title={month ? monthLabel(month) : "Recent entries"} subtitle="Newest first, from every source" onClose={() => setLogOpen(false)}>
+          <div className="ml-monthbar" style={{ marginTop: 0, marginBottom: 4 }}>
+            <MonthPick value={month} onChange={setMonth} months={months} />
+          </div>
+          {monthBal && <MonthBalance b={monthBal} label={`All accounts · ${monthBal.count} movement${monthBal.count === 1 ? "" : "s"}`} />}
         <LedgerHead />
         {recent.length === 0 ? <div className="ml-empty" style={{ marginTop: 12 }}>The ledger is empty. Load a sample month from Settings to see how it reads.</div> :
           recent.map((f) => {
@@ -1368,16 +1970,19 @@ function Overview({ A, data, posted, setTab }) {
 }
 
 /* ---------- SAVINGS ---------- */
-function Savings({ A, data, mutate, say, posted, effRate }) {
+function Savings({ A, data, mutate, say, posted, effRate, jump }) {
   const [f, setF] = useState({ name: "", type: "", interest: true, balance: "" });
   const [mv, setMv] = useState({
     mode: "spend", accountId: "", toId: "", amount: "",
     category: "Groceries", kind: "Settlement", date: TODAY(), note: "",
   });
   const [open, setOpen] = useState(false);
-  const [focus, setFocus] = useState(null);
+  const [focus, setFocus] = useState(jump || null);
   const [edit, setEdit] = useState(null);
   const [entryOpen, setEntryOpen] = useState(false);
+  const [month, setMonth] = useState("");
+  useEffect(() => { if (jump) setFocus(jump); }, [jump]);
+  const [rowEdit, setRowEdit] = useState(null);
   const [ef, setEf] = useState({ name: "", type: "", balance: "" });
   const todayPosted = posted.reduce((s, p) => s + p.amount, 0);
 
@@ -1483,10 +2088,14 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
     say(mv.category === "Investment" ? "Logged as an investment — kept out of expenses." : "Expense logged.");
   };
 
-  const txs = [...data.savingsTx]
+  const months = monthsWithData(data);
+  const allTx = [...data.savingsTx]
     .filter((t) => !focus || t.accountId === focus)
-    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
+    .filter((t) => !month || monthOf(t.date) === month)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const txs = month ? allTx : allTx.slice(0, 25);
   const focused = data.accounts.find((a) => a.id === focus);
+  const bal = month ? monthBalances(data, month, focus) : null;
 
   return (
     <>
@@ -1559,7 +2168,10 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
                 <div>
                   <div style={{ fontWeight: 600 }}>{a.name}</div>
                   <div className="ml-sub" style={{ marginTop: 3 }}>
-                    {a.type} · <span className={"ml-pill " + (a.earningInterest ? "on" : "off")}>{a.earningInterest ? `Earns ${effRate.toFixed(2)}% p.a.` : "No interest"}</span>
+                    {a.type}
+                    <span className="ml-pills" style={{ marginTop: 4 }}>
+                      <span className={"ml-pill " + (a.earningInterest ? "on" : "off")}>{a.earningInterest ? `Earns ${effRate.toFixed(2)}% p.a.` : "No interest"}</span>
+                    </span>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -1674,20 +2286,28 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
           <div className="ml-eyebrow">{focused ? `Statement — ${focused.name}` : "Account statement"}</div>
           {focused && <button className="ml-btn ghost sm" onClick={() => setFocus(null)}>Show all accounts</button>}
         </div>
+        <div className="ml-monthbar">
+          <MonthPick value={month} onChange={setMonth} months={months} />
+          {month && <span className="ml-sub">{txs.length} entr{txs.length === 1 ? "y" : "ies"} in {monthLabel(month)}</span>}
+        </div>
+        {bal && <MonthBalance b={bal} label={focused ? `${focused.name} through ${monthLabel(month)}` : `All accounts through ${monthLabel(month)}`} />}
         <div style={{ height: 10 }} />
         <LedgerHead />
         {txs.length === 0 ? <div className="ml-empty" style={{ marginTop: 12 }}>No entries yet.</div> :
           txs.map((t) => {
             const isIn = ["deposit", "interest", "settlement", "transfer-in"].includes(t.type) || (t.type === "adjustment" && t.up);
             const isInv = t.category === "Investment";
+            const locked = t.type === "interest";
             return (
-              <LedgerRow key={t.id}
+              <div key={t.id}>
+              <LedgerRow
                 title={t.note}
                 meta={`${fmtDate(t.date)} · ${A.accOf(t.accountId)} · ${t.type === "interest" ? "Interest" : t.type === "adjustment" ? "Correction" : t.type === "transfer-out" ? "Transfer out" : t.type === "transfer-in" ? "Transfer in" : t.category}`}
                 debit={!isIn && !isInv ? t.amount : 0}
                 credit={isIn ? t.amount : 0}
                 invest={isInv ? t.amount : 0}
-                onDelete={t.type === "interest" ? null : () => mutate((d) => {
+                onEdit={locked ? null : () => setRowEdit(rowEdit === t.id ? null : t.id)}
+                onDelete={locked ? null : () => mutate((d) => {
                   const legs = t.pairId ? d.savingsTx.filter((x) => x.pairId === t.pairId) : [t];
                   legs.forEach((leg) => {
                     const acc = d.accounts.find((a) => a.id === leg.accountId);
@@ -1699,6 +2319,38 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
                   d.savingsTx = d.savingsTx.filter((x) => !ids.has(x.id));
                 })}
               />
+              {rowEdit === t.id && (
+                <InlineEdit
+                  values={{ note: t.note || "", amount: String(t.amount), date: t.date, category: t.category || "Other" }}
+                  fields={[
+                    { key: "note", label: "Note", span: true },
+                    { key: "amount", label: "Amount", type: "num" },
+                    { key: "date", label: "Date", type: "date" },
+                    { key: "category", label: "Category", type: "select", options: data.config.categories.map((c) => ({ value: c, label: c, hint: isExcluded(data.config, c) ? "not counted as spending" : undefined })) },
+                  ]}
+                  note={t.pairId ? "This is one leg of a transfer — both sides move together." : null}
+                  onCancel={() => setRowEdit(null)}
+                  onSave={(v) => {
+                    const amt = num(v.amount);
+                    if (!(amt > 0)) return say("Amount must be above zero.");
+                    mutate((d) => {
+                      const legs = t.pairId ? d.savingsTx.filter((x) => x.pairId === t.pairId) : d.savingsTx.filter((x) => x.id === t.id);
+                      legs.forEach((leg) => {
+                        const acc = d.accounts.find((a) => a.id === leg.accountId);
+                        const legIn = ["deposit", "interest", "settlement", "transfer-in"].includes(leg.type) || (leg.type === "adjustment" && leg.up);
+                        if (acc) acc.balance = r2(acc.balance + (legIn ? -num(leg.amount) + amt : num(leg.amount) - amt));
+                        leg.amount = amt;
+                        leg.date = v.date;
+                        leg.note = v.note.trim() || leg.note;
+                        if (!leg.pairId) leg.category = v.category;
+                      });
+                    });
+                    setRowEdit(null);
+                    say("Entry updated.");
+                  }}
+                />
+              )}
+              </div>
             );
           })}
       </div>
@@ -1707,34 +2359,44 @@ function Savings({ A, data, mutate, say, posted, effRate }) {
 }
 
 /* ---------- CARDS ---------- */
-function Cards({ A, data, mutate, say }) {
+function Cards({ A, data, mutate, say, jump }) {
   const [s, setS] = useState({ cardId: "", amount: "", category: "Groceries", date: TODAY(), note: "", shared: false, shareFriend: "", shareAmount: "" });
   const [pay, setPay] = useState({ cardId: "", accountId: "", amount: "", statementKey: "" });
-  const [nc, setNc] = useState({ name: "", limit: "", cycleDate: TODAY(), dueDate: addDays(TODAY(), 20) });
+  const [nc, setNc] = useState({
+    name: "", limit: "",
+    cycleStart: TODAY(), cycleEnd: cycleEndFor(TODAY()), dueDate: addDays(TODAY(), 20),
+  });
   const [showCard, setShowCard] = useState(false);
-  const [focus, setFocus] = useState(null);
+  const [focus, setFocus] = useState(jump || null);
+  const [month, setMonth] = useState("");
+  const [rowEdit, setRowEdit] = useState(null);
   const [edit, setEdit] = useState(null);
   const [spendOpen, setSpendOpen] = useState(false);
+  useEffect(() => { if (jump) { setFocus(jump); setEdit(null); } }, [jump]);
   const [payOpen, setPayOpen] = useState(false);
-  const [ec, setEc] = useState({ name: "", limit: "", cycleDate: TODAY(), dueDate: TODAY() });
+  const [ec, setEc] = useState({ name: "", limit: "", cycleStart: TODAY(), cycleEnd: TODAY(), dueDate: TODAY() });
 
   const openEdit = (c) => {
     setEdit(edit === c.id ? null : c.id);
     const cyc = currentCycle(c, TODAY());
     setEc({
       name: c.name, limit: String(c.limit || ""),
-      cycleDate: c.cycleDate || cyc.start,
+      cycleStart: c.cycleStart || c.cycleDate || cyc.start,
+      cycleEnd: c.cycleEnd || cyc.end,
       dueDate: c.dueDate || cyc.due,
     });
   };
   const saveEdit = (c) => {
     if (!ec.name.trim()) return say("The card needs a name.");
+    if (ec.cycleEnd <= ec.cycleStart) return say("The cycle has to end after it starts.");
     mutate((d) => {
       const x = d.cards.find((z) => z.id === c.id);
       x.name = ec.name.trim();
       x.limit = num(ec.limit);
-      x.cycleDate = ec.cycleDate;
+      x.cycleStart = ec.cycleStart;
+      x.cycleEnd = ec.cycleEnd;
       x.dueDate = ec.dueDate;
+      delete x.cycleDate;
       delete x.statementDay;
       delete x.dueDay;
     });
@@ -1790,10 +2452,17 @@ function Cards({ A, data, mutate, say }) {
       : "Statement cleared.");
   };
 
-  const spends = [...data.spends]
+  const months = monthsWithData(data);
+  const allSpends = [...data.spends]
     .filter((x) => !focus || x.cardId === focus)
-    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
+    .filter((x) => !month || monthOf(x.date) === month)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const spends = month ? allSpends : allSpends.slice(0, 30);
   const focused = A.cardRows.find((c) => c.id === focus);
+  const monthCharged = r2(allSpends.reduce((sum, x) => sum + num(x.amount), 0));
+  const monthPaid = month ? r2(data.savingsTx.filter((t) => t.type === "card-payment"
+    && monthOf(t.date) === month && (!focus || t.cardId === focus))
+    .reduce((sum, t) => sum + num(t.amount), 0)) : 0;
 
   return (
     <>
@@ -1872,15 +2541,19 @@ function Cards({ A, data, mutate, say }) {
                     <input className="ml-in ml-num" inputMode="decimal" value={ec.limit}
                       onChange={(e) => setEc({ ...ec, limit: e.target.value })} />
                   </Field>
-                  <Field label="Billing cycle date">
-                    <DateField value={ec.cycleDate} onChange={(e) => setEc({ ...ec, cycleDate: e })} />
+                  <Field label="Billing cycle start">
+                    <DateField value={ec.cycleStart} onChange={(e) => setEc({ ...ec, cycleStart: e, cycleEnd: cycleEndFor(e) })} />
                   </Field>
-                  <Field label="Payment due date">
+                  <Field label="Billing cycle end">
+                    <DateField value={ec.cycleEnd} onChange={(e) => setEc({ ...ec, cycleEnd: e })} />
+                  </Field>
+                  <Field label="Payment due date" span>
                     <DateField value={ec.dueDate} onChange={(e) => setEc({ ...ec, dueDate: e })} />
                   </Field>
                 </div>
                 <div className="ml-sub" style={{ marginTop: 8 }}>
-                  The day of the month is what repeats — picking 15 Aug means every cycle turns over on the 15th.
+                  {fmtDate(ec.cycleStart)} – {fmtDate(ec.cycleEnd)}, payable {fmtDate(ec.dueDate)}. The days repeat every
+                  month on their own.
                 </div>
                 <div style={{ marginTop: 10 }}>
                   <button className="ml-btn sm" onClick={() => saveEdit(c)}>Save changes</button>
@@ -2003,26 +2676,31 @@ function Cards({ A, data, mutate, say }) {
             <div className="ml-form">
               <Field label="Card name"><input className="ml-in" value={nc.name} placeholder="e.g. Cashback card" onChange={(e) => setNc({ ...nc, name: e.target.value })} /></Field>
               <Field label="Credit limit"><input className="ml-in ml-num" inputMode="decimal" value={nc.limit} placeholder="0" onChange={(e) => setNc({ ...nc, limit: e.target.value })} /></Field>
-              <Field label="Billing cycle date">
-                <DateField value={nc.cycleDate} onChange={(v) => setNc({ ...nc, cycleDate: v })} />
+              <Field label="Billing cycle start">
+                <DateField value={nc.cycleStart}
+                  onChange={(v) => setNc({ ...nc, cycleStart: v, cycleEnd: cycleEndFor(v) })} />
               </Field>
-              <Field label="Payment due date">
+              <Field label="Billing cycle end">
+                <DateField value={nc.cycleEnd} onChange={(v) => setNc({ ...nc, cycleEnd: v })} />
+              </Field>
+              <Field label="Payment due date" span>
                 <DateField value={nc.dueDate} onChange={(v) => setNc({ ...nc, dueDate: v })} />
               </Field>
             </div>
             <div className="ml-sub" style={{ marginTop: 10 }}>
-              Pick any cycle date and its matching due date — the day of the month is what repeats. Cycle runs the
-              {" "}{fmtDate(nc.cycleDate)} to the day before the next one, with that bill payable on the
-              {" "}{fmtDate(nc.dueDate)}. Anything bought after a cycle closes belongs to the following bill.
+              {fmtDate(nc.cycleStart)} – {fmtDate(nc.cycleEnd)}, payable {fmtDate(nc.dueDate)}. Only the day of the month
+              matters — every following cycle picks up the same days automatically. The end date fills itself in when you
+              set the start; change it only if your bank cuts the cycle differently.
             </div>
             <div style={{ marginTop: 12 }}>
               <button className="ml-btn" onClick={() => {
                 if (!nc.name.trim()) return say("Name the card first.");
+                if (nc.cycleEnd <= nc.cycleStart) return say("The cycle has to end after it starts.");
                 mutate((d) => d.cards.push({
                   id: uid(), name: nc.name.trim(), limit: num(nc.limit),
-                  cycleDate: nc.cycleDate, dueDate: nc.dueDate,
+                  cycleStart: nc.cycleStart, cycleEnd: nc.cycleEnd, dueDate: nc.dueDate,
                 }));
-                setNc({ name: "", limit: "", cycleDate: TODAY(), dueDate: addDays(TODAY(), 20) });
+                setNc({ name: "", limit: "", cycleStart: TODAY(), cycleEnd: cycleEndFor(TODAY()), dueDate: addDays(TODAY(), 20) });
                 setShowCard(false); say("Card added.");
               }}>Add card</button>
             </div>
@@ -2035,21 +2713,331 @@ function Cards({ A, data, mutate, say }) {
           <div className="ml-eyebrow">{focused ? `Spends — ${focused.name}` : "Spends ledger"}</div>
           {focused && <button className="ml-btn ghost sm" onClick={() => setFocus(null)}>Show all cards</button>}
         </div>
+        <div className="ml-monthbar">
+          <MonthPick value={month} onChange={setMonth} months={months} />
+          {month && (
+            <span className="ml-sub">
+              {monthLabel(month)} · {mask(fmt0(monthCharged))} charged · {mask(fmt0(monthPaid))} paid off
+            </span>
+          )}
+        </div>
         <div style={{ height: 10 }} />
         <LedgerHead />
         {spends.length === 0 ? <div className="ml-empty" style={{ marginTop: 12 }}>Nothing logged yet. Your first spend goes above.</div> :
           spends.map((x) => (
-            <LedgerRow key={x.id}
-              title={x.note}
-              meta={`${fmtDate(x.date)} · ${A.cardOf(x.cardId)} · ${x.category}${x.auto ? " · auto" : ""}${num(x.shareAmount) > 0 ? ` · ${fmt0(num(x.shareAmount))} owed by ${x.shareFriend || "a friend"}` : ""}`}
-              debit={x.category === "Investment" ? 0 : x.amount}
-              credit={0}
-              invest={x.category === "Investment" ? x.amount : 0}
-              onDelete={() => mutate((d) => { d.spends = d.spends.filter((z) => z.id !== x.id); })}
-            />
+            <div key={x.id}>
+              <LedgerRow
+                title={x.note}
+                meta={`${fmtDate(x.date)} · ${A.cardOf(x.cardId)} · ${x.category}${x.auto ? " · auto" : ""}${num(x.shareAmount) > 0 ? ` · ${fmt0(num(x.shareAmount))} owed by ${x.shareFriend || "a friend"}` : ""}`}
+                debit={x.category === "Investment" ? 0 : x.amount}
+                credit={0}
+                invest={x.category === "Investment" ? x.amount : 0}
+                onEdit={() => setRowEdit(rowEdit === x.id ? null : x.id)}
+                onDelete={() => mutate((d) => { d.spends = d.spends.filter((z) => z.id !== x.id); })}
+              />
+              {rowEdit === x.id && (
+                <InlineEdit
+                  values={{
+                    note: x.note || "", amount: String(x.amount), date: x.date, category: x.category,
+                    cardId: x.cardId, shareAmount: String(num(x.shareAmount) || ""), shareFriend: x.shareFriend || "",
+                  }}
+                  fields={[
+                    { key: "note", label: "Note", span: true },
+                    { key: "amount", label: "Amount", type: "num" },
+                    { key: "date", label: "Date", type: "date" },
+                    { key: "category", label: "Category", type: "select", options: data.config.categories.map((c) => ({ value: c, label: c, hint: isExcluded(data.config, c) ? "not counted as spending" : undefined })) },
+                    { key: "cardId", label: "Card", type: "select", options: data.cards.map((c) => ({ value: c.id, label: c.name })) },
+                    { key: "shareAmount", label: "Someone's share", type: "num" },
+                    { key: "shareFriend", label: "Who owes you" },
+                  ]}
+                  note="Changing the amount or date can move this entry into a different billing cycle."
+                  onCancel={() => setRowEdit(null)}
+                  onSave={(v) => {
+                    if (!(num(v.amount) > 0)) return say("Amount must be above zero.");
+                    if (num(v.shareAmount) > num(v.amount)) return say("Their share can't be more than the total.");
+                    mutate((d) => {
+                      const y = d.spends.find((z) => z.id === x.id);
+                      y.note = v.note.trim() || y.category;
+                      y.amount = num(v.amount);
+                      y.date = v.date;
+                      y.category = v.category;
+                      y.cardId = v.cardId;
+                      y.shareAmount = num(v.shareAmount);
+                      y.shareFriend = v.shareFriend.trim();
+                    });
+                    setRowEdit(null);
+                    say("Entry updated.");
+                  }}
+                />
+              )}
+            </div>
           ))}
       </div>
     </>
+  );
+}
+
+/* ---------- QUICK LOG ---------- */
+/* One place to record anything, routed into exactly the same records the
+   individual tabs create — so every total downstream still adds up. */
+function QuickLog({ A, data, mutate, say, setTab }) {
+  const [f, setF] = useState({
+    mode: "spend", via: "card",
+    cardId: "", accountId: "", toId: "", statementKey: "",
+    amount: "", category: "Groceries", kind: "Settlement", date: TODAY(), note: "",
+    shared: false, shareAmount: "", shareFriend: "",
+  });
+
+  const cardId = f.cardId || (data.cards[0] || {}).id;
+  const accId = f.accountId || (data.accounts[0] || {}).id;
+  const payCardRow = A.cardRows.find((c) => c.id === cardId);
+  const payable = payCardRow
+    ? [...payCardRow.statements].reverse().filter((st) => st.open ? st.amount > 0 : st.balance > 0)
+    : [];
+  const payStatement = payable.find((st) => st.key === f.statementKey) || payable[0] || null;
+  const catOpts = data.config.categories.map((c) => ({
+    value: c, label: c, hint: isExcluded(data.config, c) ? "not counted as spending" : undefined,
+  }));
+
+  const reset = () => setF({ ...f, amount: "", note: "", shareAmount: "", shareFriend: "", shared: false });
+
+  const post = () => {
+    const amt = num(f.amount);
+    if (!(amt > 0)) return say("Enter an amount above zero.");
+    const share = f.shared ? Math.min(num(f.shareAmount), amt) : 0;
+    if (f.shared && !(share > 0)) return say("Enter what they owe you, or turn sharing off.");
+
+    if (f.mode === "spend") {
+      if (f.via === "card") {
+        if (!cardId) return say("Add a card first.");
+        mutate((d) => d.spends.push({
+          id: uid(), date: f.date, cardId, amount: amt, category: f.category,
+          note: f.note.trim() || f.category, shareAmount: share, shareFriend: f.shared ? f.shareFriend.trim() : "",
+        }));
+      } else {
+        if (!accId) return say("Add an account first.");
+        mutate((d) => {
+          const a = d.accounts.find((x) => x.id === accId);
+          a.balance = r2(a.balance - amt);
+          d.savingsTx.push({
+            id: uid(), date: f.date, accountId: accId, type: "withdrawal", amount: amt,
+            category: f.category, note: f.note.trim() || f.category,
+            shareAmount: share, shareFriend: f.shared ? f.shareFriend.trim() : "",
+          });
+        });
+      }
+      reset();
+      return say(share > 0
+        ? `Logged. ${fmt0(share)} sits as owed to you.`
+        : isExcluded(data.config, f.category) ? "Logged — kept out of spending." : "Spend logged.");
+    }
+
+    if (f.mode === "in") {
+      if (!accId) return say("Add an account first.");
+      mutate((d) => {
+        const a = d.accounts.find((x) => x.id === accId);
+        a.balance = r2(a.balance + amt);
+        d.savingsTx.push({
+          id: uid(), date: f.date, accountId: accId,
+          type: f.kind === "Settlement" ? "settlement" : "deposit",
+          amount: amt, category: f.kind, note: f.note.trim() || f.kind,
+        });
+      });
+      reset();
+      return say("Added to the balance — income stays the figure in Settings.");
+    }
+
+    if (f.mode === "pay") {
+      if (!cardId || !accId) return say("Need a card and an account.");
+      if (!payStatement) return say("Nothing outstanding on that card.");
+      const due = payStatement.open ? payStatement.amount : payStatement.balance;
+      const payAmt = amt || due;
+      mutate((d) => {
+        const a = d.accounts.find((x) => x.id === accId);
+        a.balance = r2(a.balance - payAmt);
+        d.savingsTx.push({
+          id: uid(), date: f.date, accountId: accId, cardId, type: "card-payment",
+          statementKey: payStatement.key, amount: payAmt, category: "Card Payment",
+          note: f.note.trim() || `${A.cardOf(cardId)} — statement of ${fmtDate(payStatement.end)}`,
+        });
+      });
+      reset();
+      return say(payAmt < due ? "Part payment posted — the rest stays on that statement." : "Statement cleared.");
+    }
+
+    const to = f.toId || (data.accounts.find((a) => a.id !== accId) || {}).id;
+    if (!to || to === accId) return say("Pick two different accounts.");
+    mutate((d) => {
+      const pairId = uid();
+      const a = d.accounts.find((x) => x.id === accId);
+      const b = d.accounts.find((x) => x.id === to);
+      a.balance = r2(a.balance - amt);
+      b.balance = r2(b.balance + amt);
+      const note = f.note.trim() || `${a.name} → ${b.name}`;
+      d.savingsTx.push({ id: uid(), pairId, date: f.date, accountId: accId, type: "transfer-out", amount: amt, category: "Transfer", note });
+      d.savingsTx.push({ id: uid(), pairId, date: f.date, accountId: to, type: "transfer-in", amount: amt, category: "Transfer", note });
+    });
+    reset();
+    say("Moved between your accounts.");
+  };
+
+  const recent = [
+    ...data.spends.map((x) => ({ ...x, where: A.cardOf(x.cardId), out: true })),
+    ...data.savingsTx.filter((t) => t.type !== "interest").map((t) => ({
+      ...t, where: A.accOf(t.accountId),
+      out: ["withdrawal", "auto", "card-payment", "transfer-out"].includes(t.type),
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 6);
+
+  return (
+    <div className="ml-page">
+      <div className="ml-card ml-w6">
+        <div className="ml-eyebrow">What are you recording</div>
+        <div className="ml-flex" style={{ margin: "10px 0 4px" }}>
+          <div className="ml-seg">
+            <button data-on={f.mode === "spend" ? "1" : "0"} onClick={() => setF({ ...f, mode: "spend" })}>Spend</button>
+            <button data-on={f.mode === "in" ? "1" : "0"} onClick={() => setF({ ...f, mode: "in" })}>Money in</button>
+            <button data-on={f.mode === "transfer" ? "1" : "0"} onClick={() => setF({ ...f, mode: "transfer" })}>Transfer</button>
+            <button data-on={f.mode === "pay" ? "1" : "0"} onClick={() => setF({ ...f, mode: "pay" })}>Pay a bill</button>
+          </div>
+        </div>
+
+        {f.mode === "spend" && (
+          <div className="ml-flex" style={{ marginBottom: 4 }}>
+            <div className="ml-seg">
+              <button data-on={f.via === "card" ? "1" : "0"} onClick={() => setF({ ...f, via: "card" })}>On a card</button>
+              <button data-on={f.via === "account" ? "1" : "0"} onClick={() => setF({ ...f, via: "account" })}>From an account</button>
+            </div>
+          </div>
+        )}
+
+        <div className="ml-form" style={{ marginTop: 10 }}>
+          {(f.mode === "spend" && f.via === "card") || f.mode === "pay" ? (
+            <Field label="Card">
+              <Pick value={cardId} onChange={(v) => setF({ ...f, cardId: v, statementKey: "" })}
+                options={data.cards.map((c) => ({ value: c.id, label: c.name }))} />
+            </Field>
+          ) : f.mode !== "pay" && (
+            <Field label={f.mode === "transfer" ? "From account" : "Account"}>
+              <Pick value={accId} onChange={(v) => setF({ ...f, accountId: v })}
+                options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
+            </Field>
+          )}
+
+          {f.mode === "pay" && (
+            <Field label="From account">
+              <Pick value={accId} onChange={(v) => setF({ ...f, accountId: v })}
+                options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
+            </Field>
+          )}
+          {f.mode === "pay" && (
+            <Field label="Which statement" span>
+              <Pick value={payStatement ? payStatement.key : ""} onChange={(v) => setF({ ...f, statementKey: v })}
+                placeholder="Nothing outstanding"
+                options={payable.map((st) => ({
+                  value: st.key,
+                  label: `${fmtDate(st.start)} – ${fmtDate(st.end)} · ${fmt0(st.open ? st.amount : st.balance)}`,
+                  hint: st.open ? "still open, not billed yet" : st.overdue ? `overdue since ${fmtDate(st.due)}` : `due ${fmtDate(st.due)}`,
+                }))} />
+            </Field>
+          )}
+
+          {f.mode === "transfer" && (
+            <Field label="To account">
+              <Pick value={f.toId || (data.accounts.find((a) => a.id !== accId) || {}).id || ""}
+                onChange={(v) => setF({ ...f, toId: v })}
+                options={data.accounts.map((a) => ({ value: a.id, label: a.name }))} />
+            </Field>
+          )}
+
+          <Field label="Amount">
+            <input className="ml-in ml-num" inputMode="decimal" value={f.amount}
+              placeholder={f.mode === "pay" && payStatement ? String(payStatement.open ? payStatement.amount : payStatement.balance) : "0"}
+              onChange={(e) => setF({ ...f, amount: e.target.value })} />
+          </Field>
+
+          {f.mode === "spend" && (
+            <Field label="Category">
+              <Pick value={f.category} onChange={(v) => setF({ ...f, category: v })} options={catOpts} />
+            </Field>
+          )}
+          {f.mode === "in" && (
+            <Field label="What kind of money">
+              <Pick value={f.kind} onChange={(v) => setF({ ...f, kind: v })}
+                options={DEPOSIT_KINDS.map(([k, hint]) => ({ value: k, label: k, hint }))} />
+            </Field>
+          )}
+
+          <Field label="Date">
+            <DateField value={f.date} onChange={(v) => setF({ ...f, date: v })} />
+          </Field>
+          <Field label="Note" span>
+            <input className="ml-in" value={f.note} placeholder="What was this for?"
+              onChange={(e) => setF({ ...f, note: e.target.value })} />
+          </Field>
+
+          {f.mode === "spend" && (
+            <Field label="Someone owes you part of it">
+              <div className="ml-seg">
+                <button data-on={!f.shared ? "1" : "0"} onClick={() => setF({ ...f, shared: false })}>No</button>
+                <button data-on={f.shared ? "1" : "0"} onClick={() => setF({ ...f, shared: true })}>Yes</button>
+              </div>
+            </Field>
+          )}
+          {f.mode === "spend" && f.shared && (
+            <>
+              <Field label="Their share">
+                <input className="ml-in ml-num" inputMode="decimal" value={f.shareAmount} placeholder="0"
+                  onChange={(e) => setF({ ...f, shareAmount: e.target.value })} />
+              </Field>
+              <Field label="Who owes you" span>
+                <input className="ml-in" value={f.shareFriend} placeholder="Name"
+                  onChange={(e) => setF({ ...f, shareFriend: e.target.value })} />
+              </Field>
+            </>
+          )}
+        </div>
+
+        <div className="ml-flex" style={{ marginTop: 12 }}>
+          <button className="ml-btn" onClick={post}>
+            {f.mode === "spend" ? "Log spend" : f.mode === "in" ? "Add to balance" : f.mode === "pay" ? "Pay bill" : "Move it"}
+          </button>
+          <span className="ml-sub">
+            {f.mode === "spend" && f.via === "card" ? "Lands on that card's current billing cycle."
+              : f.mode === "spend" ? "Comes straight off the account balance."
+                : f.mode === "in" ? "Raises the balance without counting as income."
+                  : f.mode === "pay" ? "Leave the amount blank to clear the statement in full."
+                    : "Both legs post at once and neither counts as spending."}
+          </span>
+        </div>
+      </div>
+
+      <div className="ml-card ml-w6">
+        <div className="ml-between">
+          <div className="ml-eyebrow">Just logged</div>
+          <button className="ml-btn ghost sm" onClick={() => setTab("overview")}>See the month</button>
+        </div>
+        {recent.length === 0 ? (
+          <div className="ml-empty" style={{ marginTop: 12 }}>Nothing yet — the first entry goes above.</div>
+        ) : (
+          <div style={{ marginTop: 6 }}>
+            {recent.map((x) => (
+              <div className="ml-between" key={x.id} style={{ padding: "8px 0", borderTop: "1px solid var(--rule-soft)", fontSize: 13 }}>
+                <span style={{ minWidth: 0 }}>
+                  {x.note || x.category}
+                  <span className="ml-sub" style={{ display: "block", marginTop: 1 }}>
+                    {fmtDate(x.date)} · {x.where} · {x.category}
+                  </span>
+                </span>
+                <span className="ml-num" style={{ color: x.out ? "var(--debit)" : "var(--credit)" }}>
+                  {mask((x.out ? "−" : "+") + fmt(x.amount))}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2117,6 +3105,7 @@ function Alerts({ A, setTab }) {
 function SharedPanel({ A, data, mutate, say }) {
   const [f, setF] = useState({});
   const [open, setOpen] = useState(false);
+  const [rowEdit, setRowEdit] = useState(null);
   const [nb, setNb] = useState({
     note: "", friend: "", amount: "", share: "", date: TODAY(),
     payFrom: "card", sourceId: "", category: "Groceries",
@@ -2279,9 +3268,46 @@ function SharedPanel({ A, data, mutate, say }) {
               <div style={{ textAlign: "right" }}>
                 <div className="ml-num ml-credit" style={{ fontWeight: 600 }}>{fmt(x.pending)}</div>
                 <div className="ml-sub">{x.shareFriend || "a friend"} owes</div>
-                <button className="ml-btn ghost sm" style={{ marginTop: 6 }} onClick={() => removeBill(x)}>Delete</button>
+                <span className="ml-rowacts" style={{ marginTop: 6 }}>
+                  <button className="ml-x" title="Edit" onClick={() => setRowEdit(rowEdit === x.id ? null : x.id)}><PencilIcon /></button>
+                  <button className="ml-x" title="Delete" onClick={() => removeBill(x)}><TrashIcon /></button>
+                </span>
               </div>
             </div>
+            {rowEdit === x.id && (
+              <InlineEdit
+                values={{ note: x.note || "", amount: String(x.amount), share: String(x.shareDue), date: x.date, shareFriend: x.shareFriend || "" }}
+                fields={[
+                  { key: "note", label: "What it was for", span: true },
+                  { key: "amount", label: "Total you paid", type: "num" },
+                  { key: "share", label: "Their share", type: "num" },
+                  { key: "date", label: "Date", type: "date" },
+                  { key: "shareFriend", label: "Who owes you", span: true },
+                ]}
+                note={x.settled > 0 ? `${fmt(x.settled)} already settled — their share can't drop below that.` : null}
+                onCancel={() => setRowEdit(null)}
+                onSave={(v) => {
+                  const total = num(v.amount), part = num(v.share);
+                  if (!(total > 0)) return say("Total must be above zero.");
+                  if (part > total) return say("Their share can't be more than the total.");
+                  if (part < x.settled) return say(`They've already paid ${fmt0(x.settled)} — their share can't be less.`);
+                  mutate((d) => {
+                    const list = x.kind === "card" ? d.spends : d.savingsTx;
+                    const y = list.find((z) => z.id === x.id);
+                    if (!y) return;
+                    if (x.kind !== "card") {
+                      const acc = d.accounts.find((a) => a.id === y.accountId);
+                      if (acc) acc.balance = r2(acc.balance + num(y.amount) - total);
+                    }
+                    y.amount = total; y.shareAmount = part; y.date = v.date;
+                    y.note = v.note.trim() || y.note; y.shareFriend = v.shareFriend.trim();
+                  });
+                  setRowEdit(null);
+                  say("Shared bill updated.");
+                }}
+              />
+            )}
+
             <div className="ml-form" style={{ marginTop: 10 }}>
               <Field label="They paid">
                 <input className="ml-in ml-num" inputMode="decimal" placeholder={String(x.pending)}
@@ -2341,18 +3367,40 @@ function SharedPanel({ A, data, mutate, say }) {
 
 /* ---------- FRIENDS' EMI ---------- */
 function Emis({ A, data, mutate, say }) {
-  const [e, setE] = useState({ friend: "", item: "", cardId: "", principal: "", months: "6", startDate: TODAY(), note: "" });
+  const [e, setE] = useState({
+    friend: "", item: "", cardId: "", principal: "", months: "6", startDate: TODAY(), note: "",
+    emiType: "nocost", procFee: "", feeGst: "18", rate: "", intGst: "18",
+  });
   const [rp, setRp] = useState({});
   const [repay, setRepay] = useState(null);
+  const [emiEdit, setEmiEdit] = useState(null);
+  const [openEmi, setOpenEmi] = useState(null);
+  const [schedEdit, setSchedEdit] = useState(null);   // "<emiId>:<monthIndex>"
+  const [schedVal, setSchedVal] = useState("");
+
+  const setOverride = (emi, k, raw) => {
+    mutate((d) => {
+      const y = d.emis.find((z) => z.id === emi.id);
+      y.overrides = { ...(y.overrides || {}) };
+      if (raw === null) delete y.overrides[String(k)];
+      else y.overrides[String(k)] = num(raw);
+    });
+    setSchedEdit(null);
+    say(raw === null ? "Back to the computed figure." : "Bank's figure saved for that month.");
+  };
+  const [repEdit, setRepEdit] = useState(null);
   const [open, setOpen] = useState(false);
 
   const add = () => {
     if (!e.friend.trim()) return say("Whose purchase is this?");
     if (num(e.principal) <= 0 || num(e.months) <= 0) return say("Add the amount and number of months.");
+    if (e.emiType === "interest" && !(num(e.rate) > 0)) return say("Add the interest rate, or switch to no-cost.");
     mutate((d) => d.emis.push({
       id: uid(), friend: e.friend.trim(), item: e.item.trim() || "Purchase",
       cardId: e.cardId || (d.cards[0] || {}).id, principal: num(e.principal),
       months: Math.round(num(e.months)), startDate: e.startDate, note: e.note.trim(),
+      emiType: e.emiType, procFee: num(e.procFee), feeGst: num(e.feeGst),
+      rate: e.emiType === "interest" ? num(e.rate) : 0, intGst: num(e.intGst),
     }));
     setE({ ...e, friend: "", item: "", principal: "", note: "" });
     setOpen(false);
@@ -2363,6 +3411,9 @@ function Emis({ A, data, mutate, say }) {
     const v = rp[emi.id];
     const amount = num(v && v.amount);
     if (amount <= 0) return say("Enter what they paid you.");
+    if (amount > emi.outstanding + 0.01) {
+      return say(`That's more than the ${fmt0(emi.outstanding)} still owed on this one.`);
+    }
     mutate((d) => d.repayments.push({
       id: uid(), emiId: emi.id, date: (v && v.date) || TODAY(), amount,
       note: (v && v.note) || `Repayment from ${emi.friend}`,
@@ -2403,7 +3454,39 @@ function Emis({ A, data, mutate, say }) {
               <Field label="Total amount"><input className="ml-in ml-num" inputMode="decimal" value={e.principal} placeholder="0" onChange={(x) => setE({ ...e, principal: x.target.value })} /></Field>
               <Field label="Months"><input className="ml-in ml-num" inputMode="numeric" value={e.months} onChange={(x) => setE({ ...e, months: x.target.value })} /></Field>
               <Field label="First instalment"><DateField value={e.startDate} onChange={(v) => setE({ ...e, startDate: v })} /></Field>
+              <Field label="EMI type" span>
+                <div className="ml-seg">
+                  <button data-on={e.emiType === "nocost" ? "1" : "0"} onClick={() => setE({ ...e, emiType: "nocost" })}>No-cost</button>
+                  <button data-on={e.emiType === "interest" ? "1" : "0"} onClick={() => setE({ ...e, emiType: "interest" })}>Interest</button>
+                </div>
+              </Field>
+              <Field label="Processing fee">
+                <input className="ml-in ml-num" inputMode="decimal" value={e.procFee} placeholder="0"
+                  onChange={(x) => setE({ ...e, procFee: x.target.value })} />
+              </Field>
+              <Field label="Tax on fee (%)">
+                <input className="ml-in ml-num" inputMode="decimal" value={e.feeGst}
+                  onChange={(x) => setE({ ...e, feeGst: x.target.value })} />
+              </Field>
+              {e.emiType === "interest" && (
+                <>
+                  <Field label="Interest rate (% p.a.)">
+                    <input className="ml-in ml-num" inputMode="decimal" value={e.rate} placeholder="e.g. 16"
+                      onChange={(x) => setE({ ...e, rate: x.target.value })} />
+                  </Field>
+                  <Field label="Tax on interest (%)">
+                    <input className="ml-in ml-num" inputMode="decimal" value={e.intGst}
+                      onChange={(x) => setE({ ...e, intGst: x.target.value })} />
+                  </Field>
+                </>
+              )}
               <Field label="Note" span><input className="ml-in" value={e.note} placeholder="Terms you agreed on" onChange={(x) => setE({ ...e, note: x.target.value })} /></Field>
+            </div>
+            <div className="ml-sub" style={{ marginTop: 10 }}>
+              {e.emiType === "nocost"
+                ? "No-cost still usually carries a processing fee and tax on it — the bank charges those even when the merchant absorbs the interest."
+                : "Interest is worked out on the reducing balance, so the instalment eases down slightly each month as the tax on interest shrinks."}
+              {" "}Your friend carries the whole cost: fee, tax and interest included.
             </div>
             <div style={{ marginTop: 12 }}><button className="ml-btn" onClick={add}>Start tracking</button></div>
           </Modal>
@@ -2413,30 +3496,126 @@ function Emis({ A, data, mutate, say }) {
       {A.emiRows.length === 0 ? (
         <div className="ml-card"><div className="ml-empty">No friend EMIs yet. Add one above and the repayment log appears here.</div></div>
       ) : A.emiRows.map((x) => {
-        const pct = Math.min(100, Math.round((x.received / Math.max(1, num(x.principal))) * 100));
+        const pct = Math.min(100, Math.round((x.received / Math.max(1, x.total)) * 100));
         const mine = data.repayments.filter((r) => r.emiId === x.id).sort((a, b) => b.date.localeCompare(a.date));
         const v = rp[x.id] || { amount: "", date: TODAY(), note: "" };
+        const shown = openEmi === x.id;
         return (
           <div className="ml-card" key={x.id}>
-            <div className="ml-between">
+            <button type="button" className="ml-disclose"
+              onClick={() => { setOpenEmi(shown ? null : x.id); setEmiEdit(null); setSchedEdit(null); }}
+              aria-expanded={shown}>
+              <span style={{ minWidth: 0 }}>
+                <span className="ml-h" style={{ fontSize: 15, display: "block" }}>{x.friend} — {x.item}</span>
+                <span className="ml-sub" style={{ display: "block", marginTop: 3 }}>
+                  {fmt0(x.monthly)}/month × {x.months} · {A.cardOf(x.cardId)}
+                  {x.overdue > 0 && <span className="ml-pill off" style={{ marginLeft: 6 }}>{fmt0(x.overdue)} past due</span>}
+                </span>
+              </span>
+              <span style={{ textAlign: "right", flex: "0 0 auto" }}>
+                <span className="ml-num" style={{ fontWeight: 600, color: "var(--debit)" }}>{mask(fmt0(x.outstanding))}</span>
+                <span className="ml-sub" style={{ display: "block" }}>{pct}% repaid</span>
+              </span>
+              <span className={"ml-chev ml-chevs" + (shown ? " up" : "")} />
+            </button>
+
+            {!shown && (
+              <div className="ml-bar" style={{ marginTop: 10 }}>
+                <i style={{ width: `${pct}%`, background: x.overdue > 0 ? "var(--amber)" : "var(--credit)" }} />
+              </div>
+            )}
+
+            {shown && (
+            <>
+            <div className="ml-between" style={{ marginTop: 12 }}>
               <div>
-                <div className="ml-h" style={{ fontSize: 15 }}>{x.friend} — {x.item}</div>
-                <div className="ml-sub" style={{ marginTop: 3 }}>
-                  {fmt0(x.monthly)}/month × {x.months} · started {fmtDate(x.startDate)} · {A.cardOf(x.cardId)}
+                <div className="ml-sub">
+                  Started {fmtDate(x.startDate)} · {fmt0(x.principal)} borrowed
+                </div>
+                <div className="ml-pills">
+                  <span className="ml-pill">{(x.emiType || "nocost") === "interest" ? `Interest ${num(x.rate).toFixed(2)}%` : "No-cost"}</span>
+                  {x.sched.upfront > 0 && <span className="ml-pill">Fee {fmt0(x.sched.upfront)}</span>}
+                  {x.sched.interest > 0 && <span className="ml-pill">Interest {fmt0(x.sched.interest)}</span>}
+                  {x.sched.tax > 0 && <span className="ml-pill">Tax {fmt0(x.sched.tax)}</span>}
                 </div>
               </div>
-              <button className="ml-x" title="Remove" onClick={() => mutate((d) => {
-                d.emis = d.emis.filter((z) => z.id !== x.id);
-                d.repayments = d.repayments.filter((z) => z.emiId !== x.id);
-              })}><TrashIcon /></button>
+              <span className="ml-rowacts">
+                <button className="ml-x" title="Edit" onClick={() => setEmiEdit(emiEdit === x.id ? null : x.id)}><PencilIcon /></button>
+                <button className="ml-x" title="Remove" onClick={() => mutate((d) => {
+                  d.emis = d.emis.filter((z) => z.id !== x.id);
+                  d.repayments = d.repayments.filter((z) => z.emiId !== x.id);
+                })}><TrashIcon /></button>
+              </span>
             </div>
+
+            {emiEdit === x.id && (
+              <InlineEdit
+                values={{
+                  friend: x.friend, item: x.item, principal: String(x.principal), months: String(x.months),
+                  startDate: x.startDate, cardId: x.cardId, emiType: x.emiType || "nocost",
+                  procFee: String(num(x.procFee) || ""), feeGst: String(num(x.feeGst) || ""),
+                  rate: String(num(x.rate) || ""), intGst: String(num(x.intGst) || ""),
+                }}
+                fields={[
+                  { key: "friend", label: "Friend" },
+                  { key: "item", label: "What they bought" },
+                  { key: "principal", label: "Amount", type: "num" },
+                  { key: "months", label: "Months", type: "num" },
+                  { key: "startDate", label: "First instalment", type: "date" },
+                  { key: "cardId", label: "Card", type: "select", options: data.cards.map((c) => ({ value: c.id, label: c.name })) },
+                  { key: "emiType", label: "EMI type", type: "select", options: [{ value: "nocost", label: "No-cost" }, { value: "interest", label: "Interest-bearing" }] },
+                  { key: "procFee", label: "Processing fee", type: "num" },
+                  { key: "feeGst", label: "Tax on fee (%)", type: "num" },
+                  { key: "rate", label: "Interest (% p.a.)", type: "num" },
+                  { key: "intGst", label: "Tax on interest (%)", type: "num" },
+                ]}
+                note={`${fmt(x.received)} already repaid — the amount can't go below that.`}
+                onCancel={() => setEmiEdit(null)}
+                onSave={(v) => {
+                  if (!(num(v.principal) > 0) || !(num(v.months) > 0)) return say("Amount and months must be above zero.");
+                  const months = Math.round(num(v.months));
+                  /* an override for a month that no longer exists must not linger */
+                  const overrides = {};
+                  Object.entries(x.overrides || {}).forEach(([k, val]) => {
+                    if (Number(k) < months) overrides[k] = val;
+                  });
+                  const draft = {
+                    principal: num(v.principal), months, startDate: v.startDate,
+                    emiType: v.emiType, procFee: num(v.procFee), feeGst: num(v.feeGst),
+                    rate: v.emiType === "interest" ? num(v.rate) : 0, intGst: num(v.intGst),
+                    overrides,
+                  };
+                  if (emiSchedule(draft).total < x.received) {
+                    return say(`They've already repaid ${fmt0(x.received)} — the total can't be less than that.`);
+                  }
+                  mutate((d) => {
+                    const y = d.emis.find((z) => z.id === x.id);
+                    y.friend = v.friend.trim() || y.friend;
+                    y.item = v.item.trim() || y.item;
+                    y.cardId = v.cardId;
+                    Object.assign(y, draft);
+                  });
+                  setEmiEdit(null);
+                  say("EMI updated.");
+                }}
+              />
+            )}
 
             <div className="ml-bar" style={{ marginTop: 12 }}>
               <i style={{ width: `${pct}%`, background: x.overdue > 0 ? "var(--amber)" : "var(--credit)" }} />
             </div>
             <div className="ml-flex" style={{ marginTop: 8, justifyContent: "space-between", fontSize: 12 }}>
-              <span className="ml-num">{fmt0(x.received)} repaid ({pct}%)</span>
-              <span className="ml-num" style={{ color: "var(--debit)" }}>{fmt0(x.outstanding)} outstanding</span>
+              <span className="ml-num">{mask(fmt0(x.received))} repaid ({pct}%)</span>
+              <span className="ml-num" style={{ color: "var(--debit)" }}>{mask(fmt0(x.outstanding))} outstanding</span>
+            </div>
+            {x.overpaid > 0 && (
+              <div className="ml-sub" style={{ marginTop: 6, color: "var(--amber)" }}>
+                {fmt(x.overpaid)} more has been logged than this EMI comes to — worth checking the repayments below.
+              </div>
+            )}
+            <div className="ml-sub" style={{ marginTop: 4 }}>
+              Owes {mask(fmt(x.total))} in all — {fmt0(x.principal)} borrowed
+              {x.sched.total - num(x.principal) > 0 ? ` plus ${fmt0(r2(x.sched.total - num(x.principal)))} of fee, interest and tax` : ""}
             </div>
             <div className="ml-sub" style={{ marginTop: 6 }}>
               {x.due} of {x.months} instalments billed.{" "}
@@ -2444,6 +3623,73 @@ function Emis({ A, data, mutate, say }) {
                 ? <span style={{ color: "var(--amber)" }}>{fmt0(x.overdue)} past due — you're carrying it.</span>
                 : <span style={{ color: "var(--credit)" }}>Up to date.</span>}
             </div>
+
+            <div className="ml-eyebrow" style={{ marginTop: 16 }}>Month by month</div>
+            <div className="ml-sub" style={{ marginTop: 4 }}>
+              Worked out on a reducing balance. Where the bank's statement differs, put their figure in — that month
+              switches to it and the rest stay as calculated.
+            </div>
+            <div className="ml-sched">
+              {x.sched.upfront > 0 && (
+                <div className="ml-srow">
+                  <span className="ml-sk">fee</span>
+                  <span>Processing fee + tax <span className="ml-sub">· {fmtDate(x.startDate)}</span></span>
+                  <span className="ml-samt">{mask(fmt(x.sched.upfront))}</span>
+                  <span />
+                </div>
+              )}
+              {x.sched.rows.map((r) => {
+                const billed = r.date <= A.today;
+                const key = `${x.id}:${r.k}`;
+                return (
+                  <React.Fragment key={key}>
+                    <div className="ml-srow">
+                      <span className="ml-sk">{r.k + 1}</span>
+                      <span style={{ minWidth: 0 }}>
+                        {fmtDate(r.date)}
+                        {r.override
+                          ? <span className="ml-pill on" style={{ marginLeft: 6 }}>Bank</span>
+                          : billed ? <span className="ml-pill" style={{ marginLeft: 6 }}>Billed</span> : null}
+                        {r.interest > 0 && (
+                          <span className="ml-sub" style={{ display: "block", marginTop: 1 }}>
+                            {fmt0(r.principal)} principal · {fmt0(r.interest)} interest · {fmt0(r.tax)} tax
+                          </span>
+                        )}
+                      </span>
+                      <span className="ml-samt" style={{ color: r.override ? "var(--stamp)" : "var(--ink)" }}>
+                        {mask(fmt(r.amount))}
+                      </span>
+                      <button className="ml-x" title="Use the bank's figure"
+                        onClick={() => { setSchedEdit(schedEdit === key ? null : key); setSchedVal(String(r.amount)); }}>
+                        <PencilIcon />
+                      </button>
+                    </div>
+                    {schedEdit === key && (
+                      <div className="ml-sedit">
+                        <input className="ml-in ml-num" inputMode="decimal" value={schedVal}
+                          placeholder={String(r.computed || r.amount)}
+                          onChange={(ev) => setSchedVal(ev.target.value)} />
+                        <button className="ml-btn sm" onClick={() => {
+                          if (!(num(schedVal) >= 0)) return say("Enter the amount from the statement.");
+                          setOverride(x, r.k, schedVal);
+                        }}>Save</button>
+                        {r.override && (
+                          <button className="ml-btn ghost sm" onClick={() => setOverride(x, r.k, null)}>Reset</button>
+                        )}
+                        <button className="ml-btn ghost sm" onClick={() => setSchedEdit(null)}>Cancel</button>
+                        {r.override && <span className="ml-sub">Computed {fmt(r.computed)}</span>}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            {x.sched.overrides > 0 && (
+              <div className="ml-sub" style={{ marginTop: 8 }}>
+                {x.sched.overrides} month{x.sched.overrides > 1 ? "s" : ""} taken from the statement ·
+                {" "}{x.sched.drift >= 0 ? "+" : ""}{fmt(x.sched.drift)} against the calculated schedule
+              </div>
+            )}
 
             <hr className="ml-hr" />
             <div className="ml-between">
@@ -2454,7 +3700,7 @@ function Emis({ A, data, mutate, say }) {
             </div>
 
             {repay === x.id && (
-              <Modal title={`Repayment from ${x.friend}`} subtitle={`${fmt0(x.monthly)} a month · ${fmt0(x.pending || x.outstanding)} outstanding`}
+              <Modal title={`Repayment from ${x.friend}`} subtitle={`${fmt0(x.monthly)} a month · ${fmt0(x.outstanding)} still owed`}
                 onClose={() => setRepay(null)}>
                 <div className="ml-form">
                   <Field label="Amount">
@@ -2475,15 +3721,43 @@ function Emis({ A, data, mutate, say }) {
             {mine.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 {mine.map((r) => (
-                  <div className="ml-between" key={r.id} style={{ padding: "7px 0", borderTop: "1px solid var(--rule-soft)", fontSize: 13 }}>
-                    <span>{fmtDate(r.date)} <span className="ml-sub">· {r.note}</span></span>
-                    <span className="ml-flex">
-                      <span className="ml-num ml-credit">{fmt(r.amount)}</span>
-                      <button className="ml-x" onClick={() => mutate((d) => { d.repayments = d.repayments.filter((z) => z.id !== r.id); })}><TrashIcon /></button>
-                    </span>
+                  <div key={r.id} style={{ borderTop: "1px solid var(--rule-soft)" }}>
+                    <div className="ml-between" style={{ padding: "7px 0", fontSize: 13 }}>
+                      <span>{fmtDate(r.date)} <span className="ml-sub">· {r.note}</span></span>
+                      <span className="ml-flex">
+                        <span className="ml-num ml-credit">{mask(fmt(r.amount))}</span>
+                        <button className="ml-x" title="Edit" onClick={() => setRepEdit(repEdit === r.id ? null : r.id)}><PencilIcon /></button>
+                        <button className="ml-x" title="Remove" onClick={() => mutate((d) => { d.repayments = d.repayments.filter((z) => z.id !== r.id); })}><TrashIcon /></button>
+                      </span>
+                    </div>
+                    {repEdit === r.id && (
+                      <InlineEdit
+                        values={{ amount: String(r.amount), date: r.date, note: r.note || "" }}
+                        fields={[
+                          { key: "amount", label: "Amount", type: "num" },
+                          { key: "date", label: "Received on", type: "date" },
+                          { key: "note", label: "Note", span: true },
+                        ]}
+                        onCancel={() => setRepEdit(null)}
+                        onSave={(v) => {
+                          if (!(num(v.amount) > 0)) return say("Amount must be above zero.");
+                          if (num(v.amount) > r2(x.outstanding + num(r.amount)) + 0.01) {
+                            return say(`That would put them over the ${fmt0(x.total)} owed.`);
+                          }
+                          mutate((d) => {
+                            const y = d.repayments.find((z) => z.id === r.id);
+                            y.amount = num(v.amount); y.date = v.date; y.note = v.note.trim() || y.note;
+                          });
+                          setRepEdit(null);
+                          say("Repayment updated.");
+                        }}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
+            )}
+            </>
             )}
           </div>
         );
@@ -2500,6 +3774,8 @@ function Auto({ A, data, mutate, say }) {
     shareAmount: "", shareFriend: "",
   });
   const [open, setOpen] = useState(false);
+  const [rowEdit, setRowEdit] = useState(null);
+  const [openItem, setOpenItem] = useState(null);
 
   const add = () => {
     if (!r.name.trim()) return say("Name the payment.");
@@ -2582,31 +3858,62 @@ function Auto({ A, data, mutate, say }) {
             const left = x.totalInstallments ? Math.max(0, x.totalInstallments - (x.paidInstallments || 0)) : null;
             const src = x.sourceType === "savings" ? A.accOf(x.sourceId) : A.cardOf(x.sourceId);
             return (
-              <div key={x.id} style={{ padding: "12px 0", borderBottom: "1px solid var(--rule-soft)" }}>
-                <div className="ml-between">
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{x.name} {!x.active && <span className="ml-pill">Finished</span>}</div>
-                    <div className="ml-sub" style={{ marginTop: 3 }}>
-                      {x.frequency} · from {src} · {x.category}
-                      {isExcluded(data.config, x.category) && <span style={{ color: "var(--stamp)" }}> · not counted as spending</span>}
-                      {num(x.shareAmount) > 0 && <span style={{ color: "var(--credit)" }}> · {fmt0(num(x.shareAmount))} back from {x.shareFriend || "a friend"}</span>}
-                    </div>
-                    <div className="ml-sub ml-num" style={{ marginTop: 3 }}>
-                      Next {fmtDate(x.nextDue)}{left !== null ? ` · ${left} of ${x.totalInstallments} left` : ""}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div className="ml-num" style={{ fontWeight: 600 }}>{fmt0(x.amount)}</div>
-                    {left !== null && left > 0 && <div className="ml-sub ml-num">{fmt0(left * num(x.amount))} to go</div>}
-                  </div>
+              <Accordion key={x.id} icon={x.category} open={openItem === x.id}
+                onToggle={() => setOpenItem(openItem === x.id ? null : x.id)}
+                title={<>{x.name} {!x.active && <span className="ml-pill">Finished</span>}</>}
+                subtitle={`${x.frequency} · next ${fmtDate(x.nextDue)}${left !== null ? ` · ${left} left` : ""}`}
+                right={<div className="ml-num" style={{ fontWeight: 700, marginRight: 8 }}>{fmt0(x.amount)}</div>}>
+                <div className="ml-sub">
+                  From {src} · {x.category}
+                  {isExcluded(data.config, x.category) && <span style={{ color: "var(--stamp)" }}> · not counted as spending</span>}
+                  {num(x.shareAmount) > 0 && <span style={{ color: "var(--credit)" }}> · {fmt0(num(x.shareAmount))} back from {x.shareFriend || "a friend"}</span>}
+                  {left !== null && left > 0 && <><br />{fmt0(left * num(x.amount))} left to go</>}
                 </div>
-                <div className="ml-flex" style={{ marginTop: 8 }}>
+                <div className="ml-flex" style={{ marginTop: 10 }}>
+                  <button className="ml-btn ghost sm" onClick={() => setRowEdit(rowEdit === x.id ? null : x.id)}>{rowEdit === x.id ? "Cancel" : "Edit"}</button>
                   <button className="ml-btn ghost sm" onClick={() => mutate((d) => {
                     const y = d.recurring.find((z) => z.id === x.id); y.active = !y.active;
                   })}>{x.active ? "Pause" : "Resume"}</button>
                   <button className="ml-btn ghost sm" onClick={() => mutate((d) => { d.recurring = d.recurring.filter((z) => z.id !== x.id); })}>Remove</button>
                 </div>
-              </div>
+
+                {rowEdit === x.id && (
+                  <InlineEdit
+                    values={{
+                      name: x.name, amount: String(x.amount), frequency: x.frequency, nextDue: x.nextDue,
+                      category: x.category, shareAmount: String(num(x.shareAmount) || ""), shareFriend: x.shareFriend || "",
+                      totalInstallments: String(num(x.totalInstallments) || ""),
+                    }}
+                    fields={[
+                      { key: "name", label: "Name", span: true },
+                      { key: "amount", label: "Amount", type: "num" },
+                      { key: "nextDue", label: "Next due", type: "date" },
+                      { key: "frequency", label: "Repeats", type: "select", options: [["weekly", "Weekly"], ["monthly", "Monthly"], ["quarterly", "Quarterly"], ["yearly", "Yearly"]].map(([value, label]) => ({ value, label })) },
+                      { key: "category", label: "Category", type: "select", options: data.config.categories.map((c) => ({ value: c, label: c })) },
+                      { key: "totalInstallments", label: "Total instalments", type: "num" },
+                      { key: "shareAmount", label: "Someone's share", type: "num" },
+                      { key: "shareFriend", label: "Who owes you" },
+                    ]}
+                    onCancel={() => setRowEdit(null)}
+                    onSave={(v) => {
+                      if (!(num(v.amount) > 0)) return say("Amount must be above zero.");
+                      mutate((d) => {
+                        const y = d.recurring.find((z) => z.id === x.id);
+                        y.name = v.name.trim() || y.name;
+                        y.amount = num(v.amount);
+                        y.frequency = v.frequency;
+                        y.nextDue = v.nextDue;
+                        y.category = v.category;
+                        y.totalInstallments = Math.round(num(v.totalInstallments));
+                        y.shareAmount = num(v.shareAmount);
+                        y.shareFriend = v.shareFriend.trim();
+                      });
+                      setRowEdit(null);
+                      say("Schedule updated.");
+                    }}
+                  />
+                )}
+              </Accordion>
             );
           })}
         </div>
@@ -2751,6 +4058,7 @@ function Backup({ A, data, mutate, setData, say }) {
     } catch (err) { say("That doesn't look like a Money Ledger backup."); }
   };
 
+  const [openSec, setOpenSec] = useState("export");
   const onFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -2771,11 +4079,11 @@ function Backup({ A, data, mutate, setData, say }) {
         <Stat raw label="Stored" value="This device" note="nothing is uploaded" />
       </StatRow>
 
-      <div className="ml-card">
-        <div className="ml-eyebrow">Take a backup</div>
-        <div className="ml-sub" style={{ marginTop: 4 }}>
-          Your ledger lives only in this app's storage. Clearing the app, clearing browser data, or a device wipe takes it
-          with them — a copy kept somewhere else is the only thing that survives that.
+      <Accordion icon="backup" open={openSec === "export"} onToggle={() => setOpenSec(openSec === "export" ? null : "export")}
+        title="Take a backup" subtitle="Your ledger lives only on this device">
+        <div className="ml-sub">
+          Clearing the app, clearing browser data, or a device wipe takes it with them — a copy kept somewhere else is
+          the only thing that survives that.
         </div>
         <div className="ml-flex" style={{ marginTop: 12 }}>
           <button className="ml-btn" onClick={download}>Download .json file</button>
@@ -2788,12 +4096,12 @@ function Backup({ A, data, mutate, setData, say }) {
             <textarea ref={taRef} className="ml-ta" readOnly style={{ marginTop: 8 }} value={text} onFocus={(e) => e.target.select()} />
           </>
         )}
-      </div>
+      </Accordion>
 
-      <div className="ml-card">
-        <div className="ml-eyebrow">Restore</div>
-        <div className="ml-sub" style={{ marginTop: 4 }}>
-          Replaces everything currently in the ledger, then catches up interest and any auto-payments due since the backup was taken.
+      <Accordion icon="restore" open={openSec === "restore"} onToggle={() => setOpenSec(openSec === "restore" ? null : "restore")}
+        title="Restore" subtitle="Replace everything from a saved backup">
+        <div className="ml-sub">
+          Catches up interest and any auto-payments due since the backup was taken.
         </div>
         <div style={{ marginTop: 12 }}>
           <div className="ml-eyebrow">From a file</div>
@@ -2809,16 +4117,16 @@ function Backup({ A, data, mutate, setData, say }) {
         <div style={{ marginTop: 10 }}>
           <button className="ml-btn ghost" onClick={() => apply(restore)}>Restore from text</button>
         </div>
-      </div>
+      </Accordion>
 
-      <div className="ml-card">
-        <div className="ml-eyebrow">Moving to a new phone</div>
-        <ol style={{ fontSize: 13, color: "var(--body)", paddingLeft: 18, marginTop: 8, lineHeight: 1.7 }}>
+      <Accordion icon="transfer" open={openSec === "move"} onToggle={() => setOpenSec(openSec === "move" ? null : "move")}
+        title="Moving to a new phone" subtitle="Three steps">
+        <ol style={{ fontSize: 13, color: "var(--body)", paddingLeft: 18, lineHeight: 1.8, margin: 0 }}>
           <li>Download the .json file on the old device.</li>
           <li>Send it to yourself however you like, or keep it in your files app.</li>
           <li>Open the ledger on the new device and restore from that file.</li>
         </ol>
-      </div>
+      </Accordion>
     </>
   );
 }
